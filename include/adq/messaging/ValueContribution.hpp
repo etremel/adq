@@ -39,10 +39,10 @@ struct ValueContribution : public MessageBody {
     }
 
     //Serialization support
-    std::size_t to_bytes(char* buffer) const override;
-    void post_object(const std::function<void(char const* const, std::size_t)>& consumer_function) const override;
+    std::size_t to_bytes(uint8_t* buffer) const override;
+    void post_object(const std::function<void(uint8_t const* const, std::size_t)>& consumer_function) const override;
     std::size_t bytes_size() const override;
-    static std::unique_ptr<ValueContribution> from_bytes(mutils::DeserializationManager* m, char const* buffer);
+    static std::unique_ptr<ValueContribution> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 };
 
 inline std::ostream& operator<<(std::ostream& stream, const ValueContribution& vc) {

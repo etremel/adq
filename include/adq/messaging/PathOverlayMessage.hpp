@@ -35,10 +35,10 @@ class PathOverlayMessage : public OverlayMessage {
         virtual ~PathOverlayMessage() = default;
 
         //Serialization support
-        std::size_t to_bytes(char* buffer) const;
-        void post_object(const std::function<void (char const * const,std::size_t)>& consumer_function) const;
+        std::size_t to_bytes(uint8_t* buffer) const;
+        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& consumer_function) const;
         std::size_t bytes_size() const;
-        static std::unique_ptr<PathOverlayMessage> from_bytes(mutils::DeserializationManager<>* m, char const * buffer);
+        static std::unique_ptr<PathOverlayMessage> from_bytes(mutils::DeserializationManager* m, uint8_t const * buffer);
 
     protected:
         /** Default constructor, used only by deserialization.*/

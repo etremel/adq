@@ -42,7 +42,7 @@ std::size_t OverlayTransportMessage::bytes_size() const {
             Message::bytes_size();
 }
 
-std::size_t OverlayTransportMessage::to_bytes(char* buffer) const {
+std::size_t OverlayTransportMessage::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = mutils::to_bytes(type, buffer);
     bytes_written += mutils::to_bytes(sender_round, buffer + bytes_written);
     bytes_written += mutils::to_bytes(is_final_message, buffer + bytes_written);
@@ -51,7 +51,7 @@ std::size_t OverlayTransportMessage::to_bytes(char* buffer) const {
 }
 
 
-void OverlayTransportMessage::post_object(const std::function<void(const char* const, std::size_t)>& function) const {
+void OverlayTransportMessage::post_object(const std::function<void(const uint8_t* const, std::size_t)>& function) const {
     mutils::post_object(function, type);
     mutils::post_object(function, sender_round);
     mutils::post_object(function, is_final_message);
@@ -59,7 +59,7 @@ void OverlayTransportMessage::post_object(const std::function<void(const char* c
 }
 
 
-std::unique_ptr<OverlayTransportMessage> OverlayTransportMessage::from_bytes(mutils::DeserializationManager* m, const char* buffer) {
+std::unique_ptr<OverlayTransportMessage> OverlayTransportMessage::from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) {
     std::size_t bytes_read = 0;
     MessageType message_type;
     std::memcpy(&message_type, buffer + bytes_read, sizeof(MessageType));

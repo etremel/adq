@@ -5,9 +5,10 @@
  * @author edward
  */
 
-#include "AgreementValue.h"
+#include <adq/messaging/AgreementValue.hpp>
+#include <adq/core/InternalTypes.hpp>
 
-namespace pddm {
+namespace adq {
 namespace messaging {
 
 const constexpr MessageBodyType AgreementValue::type;
@@ -16,10 +17,10 @@ std::size_t AgreementValue::bytes_size() const {
     //Don't add sizeof(MessageBodyType) because SignedValue already adds it
     return mutils::bytes_size(signed_value) +
             mutils::bytes_size(accepter_id) +
-            (accepter_signature.size() * sizeof(util::SignatureArray::value_type));
+            (accepter_signature.size() * sizeof(SignatureArray::value_type));
 }
 
-std::size_t AgreementValue::to_bytes(char* buffer) const {
+std::size_t AgreementValue::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     bytes_written += mutils::to_bytes(signed_value, buffer);
     //Rewrite the first two bytes of the buffer to change the MessageBodyType
@@ -27,28 +28,28 @@ std::size_t AgreementValue::to_bytes(char* buffer) const {
     //Now add the AgreementValue fields
     bytes_written += mutils::to_bytes(accepter_id, buffer + bytes_written);
     std::memcpy(buffer + bytes_written, accepter_signature.data(),
-            accepter_signature.size() * sizeof(util::SignatureArray::value_type));
-    bytes_written += accepter_signature.size() * sizeof(util::SignatureArray::value_type);
+            accepter_signature.size() * sizeof(SignatureArray::value_type));
+    bytes_written += accepter_signature.size() * sizeof(SignatureArray::value_type);
     return bytes_written;
 }
 
-void AgreementValue::post_object(const std::function<void (char const * const,std::size_t)>& consumer) const {
+void AgreementValue::post_object(const std::function<void (uint8_t const * const,std::size_t)>& consumer) const {
     //This avoids needing to rewrite MessageBodyType after caling post_object(signed_value)
-    char buffer[bytes_size()];
+    uint8_t buffer[bytes_size()];
     to_bytes(buffer);
     consumer(buffer, bytes_size());
 }
 
-std::unique_ptr<AgreementValue> AgreementValue::from_bytes(mutils::DeserializationManager<>* p, const char* buffer) {
+std::unique_ptr<AgreementValue> AgreementValue::from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer) {
     std::unique_ptr<SignedValue> signedval = mutils::from_bytes<SignedValue>(p, buffer);
     std::size_t bytes_read = mutils::bytes_size(*signedval);
     int accepter_id;
-    std::memcpy((char*) &accepter_id, buffer + bytes_read, sizeof(accepter_id));
+    std::memcpy((uint8_t*) &accepter_id, buffer + bytes_read, sizeof(accepter_id));
     bytes_read += sizeof(accepter_id);
 
-    util::SignatureArray signature;
-    std::memcpy(signature.data(), buffer + bytes_read, signature.size() * sizeof(util::SignatureArray::value_type));
-    bytes_read += signature.size() * sizeof(util::SignatureArray::value_type);
+    SignatureArray signature;
+    std::memcpy(signature.data(), buffer + bytes_read, signature.size() * sizeof(SignatureArray::value_type));
+    bytes_read += signature.size() * sizeof(SignatureArray::value_type);
 
     //Ugh, unnecessary copy of the SignedValue. Maybe I should store it by unique_ptr instead of by value.
     return std::make_unique<AgreementValue>(*signedval, accepter_id, signature);

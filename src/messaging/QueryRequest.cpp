@@ -45,7 +45,7 @@ std::size_t QueryRequest::bytes_size() const {
 //            mutils::bytes_size(proposed_price_function);
 }
 
-std::size_t QueryRequest::to_bytes(char* buffer) const {
+std::size_t QueryRequest::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = mutils::to_bytes(type, buffer);
     bytes_written += mutils::to_bytes(sender_id, buffer + bytes_written);
     bytes_written += mutils::to_bytes(request_type, buffer + bytes_written);
@@ -56,7 +56,7 @@ std::size_t QueryRequest::to_bytes(char* buffer) const {
 
 }
 
-void QueryRequest::post_object(const std::function<void(const char* const, std::size_t)>& function) const {
+void QueryRequest::post_object(const std::function<void(const uint8_t* const, std::size_t)>& function) const {
     mutils::post_object(function, type);
     mutils::post_object(function, sender_id);
     mutils::post_object(function, request_type);
@@ -66,7 +66,7 @@ void QueryRequest::post_object(const std::function<void(const char* const, std::
 
 }
 
-std::unique_ptr<QueryRequest> QueryRequest::from_bytes(mutils::DeserializationManager<>* m, const char* buffer) {
+std::unique_ptr<QueryRequest> QueryRequest::from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) {
     std::size_t bytes_read = 0;
     MessageType message_type;
     std::memcpy(&message_type, buffer + bytes_read, sizeof(MessageType));

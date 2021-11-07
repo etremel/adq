@@ -60,9 +60,9 @@ class OverlayMessage: public MessageBody {
          * @param buffer The byte buffer into which it should be serialized.
          * @return The number of bytes written; should be equal to bytes_size()
          */
-        std::size_t to_bytes(char* buffer) const;
+        std::size_t to_bytes(uint8_t* buffer) const;
 
-        void post_object(const std::function<void (char const * const,std::size_t)>& consumer_function) const;
+        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& consumer_function) const;
 
 
         /**
@@ -70,10 +70,10 @@ class OverlayMessage: public MessageBody {
          * {@code buffer}, blindly assuming that the buffer is large enough to contain
          * the OverlayMessage and its enclosed body (if present).
          * @param buffer A byte buffer containing the results of an earlier call to
-         * OverlayMessage::to_bytes(char*).
+         * OverlayMessage::to_bytes(uint8_t*).
          * @return A new OverlayMessage reconstructed from the serialized bytes.
          */
-        static std::unique_ptr<OverlayMessage> from_bytes(mutils::DeserializationManager* p, const char * buffer);
+        static std::unique_ptr<OverlayMessage> from_bytes(mutils::DeserializationManager* p, const uint8_t * buffer);
 
     protected:
         /** Default constructor, used only when reconstructing serialized messages */
@@ -87,7 +87,7 @@ class OverlayMessage: public MessageBody {
          * be serialized.
          * @return The number of bytes written by this method.
          */
-        std::size_t to_bytes_common(char* buffer) const;
+        std::size_t to_bytes_common(uint8_t* buffer) const;
 
         /**
          * Helper method for implementing from_bytes; deserializes the superclass
@@ -102,7 +102,7 @@ class OverlayMessage: public MessageBody {
          * @param buffer The byte buffer containing serialized OverlayMessage fields
          * @return The number of bytes read from the buffer during deserialization.
          */
-        static std::size_t from_bytes_common(OverlayMessage& partial_overlay_message, const char * buffer);
+        static std::size_t from_bytes_common(OverlayMessage& partial_overlay_message, const uint8_t * buffer);
 
 
 };

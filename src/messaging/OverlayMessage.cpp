@@ -58,13 +58,13 @@ std::size_t OverlayMessage::bytes_size() const {
 
 //Is it OK to implement post_object this way?? Or do I have to recursively call post_object,
 //which would require another _common method for the superclass?
-void OverlayMessage::post_object(const std::function<void(const char* const, std::size_t)>& consumer_function) const {
-    char buffer[bytes_size()];
+void OverlayMessage::post_object(const std::function<void(const uint8_t* const, std::size_t)>& consumer_function) const {
+    uint8_t buffer[bytes_size()];
     to_bytes(buffer);
     consumer_function(buffer, bytes_size());
 }
 
-std::size_t OverlayMessage::to_bytes_common(char* buffer) const {
+std::size_t OverlayMessage::to_bytes_common(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     //For POD types, this is just a shortcut to memcpy(buffer+bytes_written, &var, sizeof(var))
     bytes_written += mutils::to_bytes(query_num, buffer + bytes_written);
@@ -80,14 +80,14 @@ std::size_t OverlayMessage::to_bytes_common(char* buffer) const {
     return bytes_written;
 }
 
-std::size_t OverlayMessage::to_bytes(char* buffer) const {
+std::size_t OverlayMessage::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     bytes_written += mutils::to_bytes(type, buffer);
     bytes_written += to_bytes_common(buffer + bytes_written);
     return bytes_written;
 }
 
-std::unique_ptr<OverlayMessage> OverlayMessage::from_bytes(mutils::DeserializationManager<>* p, char const * buffer) {
+std::unique_ptr<OverlayMessage> OverlayMessage::from_bytes(mutils::DeserializationManager* p, uint8_t const * buffer) {
     std::size_t bytes_read = 0;
     MessageBodyType type;
     std::memcpy(&type, buffer + bytes_read, sizeof(type));
@@ -99,7 +99,7 @@ std::unique_ptr<OverlayMessage> OverlayMessage::from_bytes(mutils::Deserializati
     return std::move(constructed_message);
 }
 
-std::size_t OverlayMessage::from_bytes_common(OverlayMessage& partial_overlay_message, char const * buffer) {
+std::size_t OverlayMessage::from_bytes_common(OverlayMessage& partial_overlay_message, uint8_t const * buffer) {
     std::size_t bytes_read = 0;
     std::memcpy(&partial_overlay_message.query_num, buffer + bytes_read, sizeof(partial_overlay_message.query_num));
     bytes_read += sizeof(partial_overlay_message.query_num);

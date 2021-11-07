@@ -51,15 +51,15 @@ class StringBody : public MessageBody {
         std::size_t bytes_size() const {
             return mutils::bytes_size(type) + mutils::bytes_size(data);
         }
-        std::size_t to_bytes(char* buffer) const {
+        std::size_t to_bytes(uint8_t* buffer) const {
             std::size_t bytes_written = mutils::to_bytes(type, buffer);
             return bytes_written + mutils::to_bytes(data, buffer + bytes_written);
         }
-        void post_object(const std::function<void (char const * const,std::size_t)>& f) const {
+        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& f) const {
             mutils::post_object(f, type);
             mutils::post_object(f, data);
         }
-        static std::unique_ptr<StringBody> from_bytes(mutils::DeserializationManager* m, char const* buffer) {
+        static std::unique_ptr<StringBody> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer) {
             /*"Skip past the MessageBodyType, then take the deserialized string
              * and wrap it in a new StringBody"*/
             return std::make_unique<StringBody>(

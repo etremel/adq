@@ -15,7 +15,7 @@
 #include <vector>
 #include <mutils-serialization/SerializationSupport.hpp>
 
-#include <adq/util/FixedPoint.hpp>
+#include <adq/core/InternalTypes.hpp>
 #include <adq/util/Hash.hpp>
 #include "Message.hpp"
 #include "MessageType.hpp"
@@ -76,15 +76,15 @@ class AggregationMessageValue : public MessageBody {
         std::size_t bytes_size() const {
             return mutils::bytes_size(type) + mutils::bytes_size(data);
         }
-        std::size_t to_bytes(char* buffer) const {
+        std::size_t to_bytes(uint8_t* buffer) const {
             std::size_t bytes_written = mutils::to_bytes(type, buffer);
             return bytes_written + mutils::to_bytes(data, buffer + bytes_written);
         }
-        void post_object(const std::function<void (char const * const,std::size_t)>& f) const {
+        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& f) const {
             mutils::post_object(f, type);
             mutils::post_object(f, data);
         }
-        static std::unique_ptr<AggregationMessageValue> from_bytes(mutils::DeserializationManager<>* m, char const* buffer) {
+        static std::unique_ptr<AggregationMessageValue> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer) {
             /*"Skip past the MessageBodyType, then take the deserialized vector
              * and wrap it in a new AggregationMessageValue"*/
             return std::make_unique<AggregationMessageValue>(
@@ -118,9 +118,9 @@ class AggregationMessage: public Message {
         int get_num_contributors() const { return num_contributors; }
 
         std::size_t bytes_size() const;
-        std::size_t to_bytes(char* buffer) const;
-        void post_object(const std::function<void (char const * const,std::size_t)>&) const;
-        static std::unique_ptr<AggregationMessage> from_bytes(mutils::DeserializationManager *p, const char* buffer);
+        std::size_t to_bytes(uint8_t* buffer) const;
+        void post_object(const std::function<void (uint8_t const * const,std::size_t)>&) const;
+        static std::unique_ptr<AggregationMessage> from_bytes(mutils::DeserializationManager *p, const uint8_t* buffer);
 
         friend bool operator==(const AggregationMessage& lhs, const AggregationMessage& rhs);
         friend struct std::hash<AggregationMessage>;
@@ -138,10 +138,10 @@ bool operator!=(const AggregationMessage& lhs, const AggregationMessage& rhs);
 std::ostream& operator<<(std::ostream& out, const AggregationMessage& m);
 
 } /* namespace messaging */
-} /* namespace pddm */
+} /* namespace adq */
 
 namespace std {
-s
+
 template<>
 struct hash<adq::messaging::AggregationMessageValue> {
     size_t operator()(const adq::messaging::AggregationMessageValue& input) const {

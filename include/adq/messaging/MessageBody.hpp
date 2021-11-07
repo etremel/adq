@@ -17,7 +17,7 @@ class MessageBody : public mutils::ByteRepresentable {
         virtual ~MessageBody() = default;
         virtual bool operator==(const MessageBody&) const = 0;
 
-        static std::unique_ptr<MessageBody> from_bytes(mutils::DeserializationManager* m, char const * buffer);
+        static std::unique_ptr<MessageBody> from_bytes(mutils::DeserializationManager* m, uint8_t const * buffer);
 };
 
 inline bool operator!=(const MessageBody& a, const MessageBody& b){

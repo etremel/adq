@@ -41,15 +41,15 @@ class SignedValue : public MessageBody {
             else return false;
         }
         std::size_t bytes_size() const override;
-        std::size_t to_bytes(char* buffer) const override;
-        void post_object(const std::function<void (char const * const,std::size_t)>& function) const override;
-        static std::unique_ptr<SignedValue> from_bytes(mutils::DeserializationManager *p, const char* buffer);
+        std::size_t to_bytes(uint8_t* buffer) const override;
+        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& function) const override;
+        static std::unique_ptr<SignedValue> from_bytes(mutils::DeserializationManager *p, const uint8_t* buffer);
     private:
         //Helper functions for the signatures map
         //I don't have time to make this generic for all std::maps
         static std::size_t bytes_size(const std::map<int, SignatureArray>& sig_map);
-        static std::size_t to_bytes(const std::map<int, SignatureArray>& sig_map, char * buffer);
-        static std::unique_ptr<std::map<int, SignatureArray>> from_bytes_map(mutils::DeserializationManager* p, const char* buffer);
+        static std::size_t to_bytes(const std::map<int, SignatureArray>& sig_map, uint8_t* buffer);
+        static std::unique_ptr<std::map<int, SignatureArray>> from_bytes_map(mutils::DeserializationManager* p, const uint8_t* buffer);
 };
 
 inline std::ostream& operator<<(std::ostream& out, const SignedValue& s) {

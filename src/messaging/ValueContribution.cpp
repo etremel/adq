@@ -16,33 +16,33 @@ namespace messaging {
 
 const constexpr MessageBodyType ValueContribution::type;
 
-std::size_t ValueContribution::to_bytes(char* buffer) const {
+std::size_t ValueContribution::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     bytes_written += mutils::to_bytes(type, buffer);
     //Unpack each member of value and write it individually, since ValueTuple isn't ByteSerializable
     bytes_written += mutils::to_bytes(value.query_num, buffer + bytes_written);
     bytes_written += mutils::to_bytes(value.value, buffer + bytes_written);
     bytes_written += mutils::to_bytes(value.proxies, buffer + bytes_written);
-    std::memcpy(buffer + bytes_written, signature.data(), signature.size() * sizeof(util::SignatureArray::value_type));
-    bytes_written += signature.size() * sizeof(util::SignatureArray::value_type);
+    std::memcpy(buffer + bytes_written, signature.data(), signature.size() * sizeof(SignatureArray::value_type));
+    bytes_written += signature.size() * sizeof(SignatureArray::value_type);
     return bytes_written;
 }
 
-void ValueContribution::post_object(const std::function<void(const char* const, std::size_t)>& consumer_function) const {
+void ValueContribution::post_object(const std::function<void(const uint8_t* const, std::size_t)>& consumer_function) const {
     mutils::post_object(consumer_function, type);
     mutils::post_object(consumer_function, value.query_num);
     mutils::post_object(consumer_function, value.value);
     mutils::post_object(consumer_function, value.proxies);
-    consumer_function((const char*) signature.data(), signature.size() * sizeof(util::SignatureArray::value_type));
+    consumer_function((const uint8_t*) signature.data(), signature.size() * sizeof(SignatureArray::value_type));
 }
 
 std::size_t ValueContribution::bytes_size() const {
     return mutils::bytes_size(type) + mutils::bytes_size(value.query_num) +
             mutils::bytes_size(value.value) + mutils::bytes_size(value.proxies) +
-            (signature.size() * sizeof(util::SignatureArray::value_type));
+            (signature.size() * sizeof(SignatureArray::value_type));
 }
 
-std::unique_ptr<ValueContribution> ValueContribution::from_bytes(mutils::DeserializationManager<>* m, const char* buffer) {
+std::unique_ptr<ValueContribution> ValueContribution::from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) {
     std::size_t bytes_read = 0;
     MessageBodyType type;
     std::memcpy(&type, buffer + bytes_read, sizeof(type));
@@ -58,9 +58,9 @@ std::unique_ptr<ValueContribution> ValueContribution::from_bytes(mutils::Deseria
             mutils::from_bytes<std::vector<int>>(nullptr, buffer + bytes_read);
     bytes_read += mutils::bytes_size(*proxy_vector);
 
-    util::SignatureArray signature;
-    std::memcpy(signature.data(), buffer + bytes_read, signature.size() * sizeof(util::SignatureArray::value_type));
-    bytes_read += signature.size() * sizeof(util::SignatureArray::value_type);
+    SignatureArray signature;
+    std::memcpy(signature.data(), buffer + bytes_read, signature.size() * sizeof(SignatureArray::value_type));
+    bytes_read += signature.size() * sizeof(SignatureArray::value_type);
 
     //This will unnecessarily copy the vectors into the new ValueTuple, but
     //it's the only thing we can do because from_bytes returns unique_ptr

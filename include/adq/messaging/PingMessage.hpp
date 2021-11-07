@@ -40,16 +40,16 @@ class PingMessage: public Message {
          * message.bytes_size() before calling this.
          * @param buffer The byte buffer into which this object should be serialized.
          */
-        std::size_t to_bytes(char* buffer) const;
-        void post_object(const std::function<void (char const * const,std::size_t)>& f) const;
+        std::size_t to_bytes(uint8_t* buffer) const;
+        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& f) const;
         /**
          * Creates a new PingMessage by deserializing the contents of {@code buffer},
          * blindly assuming that the buffer is large enough to contain a PingMessage.
          * @param buffer A byte buffer containing the results of an earlier call to
-         * to_bytes(char*).
+         * to_bytes(uint8_t*).
          * @return A new PingMessage reconstructed from the serialized bytes.
          */
-        static std::unique_ptr<PingMessage> from_bytes(mutils::DeserializationManager* m, const char* buffer) ;
+        static std::unique_ptr<PingMessage> from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) ;
 };
 
 std::ostream& operator<< (std::ostream& out, const PingMessage& message);

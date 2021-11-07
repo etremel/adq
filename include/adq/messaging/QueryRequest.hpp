@@ -53,9 +53,9 @@ class QueryRequest: public Message {
 //            else return false;
 //        }
         std::size_t bytes_size() const;
-        std::size_t to_bytes(char* buffer) const;
-        void post_object(const std::function<void (char const * const,std::size_t)>& consumer) const;
-        static std::unique_ptr<QueryRequest> from_bytes(mutils::DeserializationManager* m, const char* buffer);
+        std::size_t to_bytes(uint8_t* buffer) const;
+        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& consumer) const;
+        static std::unique_ptr<QueryRequest> from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer);
 };
 
 std::ostream& operator<<(std::ostream& out, const QueryRequest& qr);

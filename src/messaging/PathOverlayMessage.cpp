@@ -31,7 +31,7 @@ std::ostream& operator<< (std::ostream& out, const PathOverlayMessage& message) 
 }
 
 
-std::size_t PathOverlayMessage::to_bytes(char* buffer) const {
+std::size_t PathOverlayMessage::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     bytes_written += mutils::to_bytes(type, buffer);
     bytes_written += mutils::to_bytes(remaining_path, buffer + bytes_written);
@@ -40,8 +40,8 @@ std::size_t PathOverlayMessage::to_bytes(char* buffer) const {
 }
 
 //Is it OK to implement post_object this way?? it seems much easier than recursive post_object calls
-void PathOverlayMessage::post_object(const std::function<void(const char* const, std::size_t)>& function) const {
-    char buffer[bytes_size()];
+void PathOverlayMessage::post_object(const std::function<void(const uint8_t* const, std::size_t)>& function) const {
+    uint8_t buffer[bytes_size()];
     to_bytes(buffer);
     function(buffer, bytes_size());
 }
@@ -51,7 +51,7 @@ std::size_t PathOverlayMessage::bytes_size() const {
     return OverlayMessage::bytes_size() + mutils::bytes_size(remaining_path);
 }
 
-std::unique_ptr<PathOverlayMessage> PathOverlayMessage::from_bytes(mutils::DeserializationManager<>* m, char const * buffer) {
+std::unique_ptr<PathOverlayMessage> PathOverlayMessage::from_bytes(mutils::DeserializationManager* m, uint8_t const * buffer) {
     std::size_t bytes_read = 0;
     MessageBodyType type;
     std::memcpy(&type, buffer + bytes_read, sizeof(type));
