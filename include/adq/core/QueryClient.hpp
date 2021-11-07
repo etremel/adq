@@ -1,22 +1,17 @@
 #pragma once
 
 #include <spdlog/spdlog.h>
+#include <asio.hpp>
 
+#include <adq/core/InternalTypes.hpp>
 #include <adq/core/ProtocolState.hpp>
+#include <adq/core/NetworkManager.hpp>
+#include <adq/core/DataSource.hpp>
 #include <memory>
 
 namespace adq {
-namespace messaging {
-class AggregationMessage;
-class OverlayTransportMessage;
-class PingMessage;
-class QueryRequest;
-class SignatureResponse;
-}  // namespace messaging
-}  // namespace adq
 
-namespace adq {
-
+template<typename RecordType>
 class QueryClient {
 public:
     /** The ID of this client device in the query network. */
@@ -27,9 +22,25 @@ public:
 private:
     std::shared_ptr<spdlog::logger> logger;
     ProtocolState query_protocol_state;
+    NetworkManager network_manager;
+    std::unique_ptr<DataSource<RecordType>> data_source;
 
 public:
-    QueryClient(int id, int num_clients);
+    QueryClient(int id, int num_clients, std::unique_ptr<DataSource<RecordType>> data_source);
+
+    /** Handles a message received from another meter or the utility.
+     * This is a callback for NetworkClient to invoke when a message arrives from the network_client. */
+    void handle_message(const std::shared_ptr<messaging::OverlayTransportMessage>& message);
+    /** @copydoc handle_message(const std::shared_ptr<messaging::OverlayTransportMessage>&) */
+    void handle_message(const std::shared_ptr<messaging::AggregationMessage>& message);
+    /** @copydoc handle_message(const std::shared_ptr<messaging::OverlayTransportMessage>&) */
+    void handle_message(const std::shared_ptr<messaging::PingMessage>& message);
+    /** @copydoc handle_message(const std::shared_ptr<messaging::OverlayTransportMessage>&) */
+    void handle_message(const std::shared_ptr<messaging::QueryRequest>& message);
+    /** @copydoc handle_message(const std::shared_ptr<messaging::OverlayTransportMessage>&) */
+    void handle_message(const std::shared_ptr<messaging::SignatureResponse>& message);
 };
 
 }  // namespace adq
+
+#include "detail/QueryClient_impl.hpp"

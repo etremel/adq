@@ -1,13 +1,6 @@
-/*
- * ValueTuple.h
- *
- *  Created on: May 20, 2016
- *      Author: edward
- */
-
 #pragma once
 
-#include <adq/core/FixedPoint_t.hpp>
+#include <adq/core/InternalTypes.hpp>
 #include <adq/util/Hash.hpp>
 #include <adq/util/OStreams.hpp>
 #include <ostream>

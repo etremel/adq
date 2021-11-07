@@ -3,7 +3,8 @@ set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 add_library(core OBJECT
-    QueryClient.cpp)
+    NetworkManager.cpp
+    ProtocolState.cpp)
 
 target_include_directories(core PRIVATE
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>)

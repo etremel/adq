@@ -1,6 +1,5 @@
 #pragma once
 
-#include <adq/util/CryptoLibrary.hpp>
 #include <adq/util/Hash.hpp>
 #include <cstdint>
 #include <cstring>
@@ -14,6 +13,8 @@
 
 namespace adq {
 
+using SignatureArray = std::array<uint8_t, 256>;
+
 namespace messaging {
 
 /**
@@ -23,11 +24,11 @@ namespace messaging {
 struct ValueContribution : public MessageBody {
     static const constexpr MessageBodyType type = MessageBodyType::VALUE_CONTRIBUTION;
     ValueTuple value;
-    util::SignatureArray signature;
+    SignatureArray signature;
     ValueContribution(const ValueTuple& value) : value(value) {
         signature.fill(0);
     }
-    ValueContribution(const ValueTuple& value, const util::SignatureArray& signature) : value(value), signature(signature) {}
+    ValueContribution(const ValueTuple& value, const SignatureArray& signature) : value(value), signature(signature) {}
     virtual ~ValueContribution() = default;
 
     inline bool operator==(const MessageBody& _rhs) const {
@@ -41,7 +42,7 @@ struct ValueContribution : public MessageBody {
     std::size_t to_bytes(char* buffer) const override;
     void post_object(const std::function<void(char const* const, std::size_t)>& consumer_function) const override;
     std::size_t bytes_size() const override;
-    static std::unique_ptr<ValueContribution> from_bytes(mutils::DeserializationManager<>* m, char const* buffer);
+    static std::unique_ptr<ValueContribution> from_bytes(mutils::DeserializationManager* m, char const* buffer);
 };
 
 inline std::ostream& operator<<(std::ostream& stream, const ValueContribution& vc) {
