@@ -19,8 +19,9 @@ if (NOT ${mutils_FOUND})
 endif()
 find_package(spdlog 1.3.1 REQUIRED)
 find_package(OpenSSL 1.1.1 REQUIRED)
-find_package(ASIO 1.20.0 REQUIRED)
-# Or, if that doesn't work, find_path(ASIO_PATH asio.hpp)
+# find_package(ASIO 1.20.0 REQUIRED)
+find_path(ASIO_PATH asio.hpp)
+find_path(CONCURRENTQUEUE_PATH concurrentqueue.h)
 
 add_subdirectory(src/core)
 add_subdirectory(src/mutils-serialization)
@@ -30,7 +31,7 @@ add_subdirectory(src/util)
 add_subdirectory(apps)
 
 add_library(adq SHARED
-	$<TARGET_OBJECTS:core>
+	# $<TARGET_OBJECTS:core>
 	$<TARGET_OBJECTS:mutils-serialization>
 	$<TARGET_OBJECTS:messaging>
 	$<TARGET_OBJECTS:openssl_wrapper>

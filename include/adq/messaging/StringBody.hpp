@@ -1,14 +1,14 @@
 #pragma once
 
+#include "MessageBody.hpp"
+#include "MessageBodyType.hpp"
+#include "adq/mutils-serialization/SerializationSupport.hpp"
+
 #include <string>
 #include <utility>
 #include <istream>
 #include <ostream>
 #include <memory>
-#include <mutils-serialization/SerializationSupport.hpp>
-
-#include "MessageBody.hpp"
-#include "MessageBodyType.hpp"
 
 namespace adq {
 

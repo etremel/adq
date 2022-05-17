@@ -1,8 +1,9 @@
 #pragma once
 
-#include <adq/messaging/SignedValue.hpp>
-#include <adq/messaging/ValueContribution.hpp>
-#include <adq/util/PointerUtil.hpp>
+#include "adq/messaging/SignedValue.hpp"
+#include "adq/messaging/ValueContribution.hpp"
+#include "adq/util/PointerUtil.hpp"
+
 #include <cmath>
 #include <memory>
 #include <unordered_map>

@@ -1,8 +1,9 @@
 #pragma once
 
+#include "adq/util/FixedPoint.hpp"
+
 #include <cstdint>
 #include <array>
-#include <adq/util/FixedPoint.hpp>
 
 namespace adq
 {
@@ -15,13 +16,15 @@ using FixedPoint_t = util::FixedPoint<int64_t, 16>;
 
 //All classes are forward declared here, so headers
 //can include this header to avoid circular includes
-class QueryClient;
+template<typename RecordType>
 class NetworkManager;
+template<typename RecordType>
 class ProtocolState;
 class CryptoLibrary;
 
 namespace messaging {
 class AggregationMessage;
+class AggregationMessageValue;
 class OverlayTransportMessage;
 class PingMessage;
 class QueryRequest;

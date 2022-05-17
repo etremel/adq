@@ -6,7 +6,7 @@
  * @author edward
  */
 
-#include <adq/messaging/SignatureRequest.hpp>
+#include "adq/messaging/SignatureRequest.hpp"
 
 const constexpr adq::messaging::MessageType adq::messaging::SignatureRequest::type;
 

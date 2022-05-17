@@ -1,21 +1,16 @@
 #pragma once
 
-#include <adq/core/InternalTypes.hpp>
+#include "InternalTypes.hpp"
+#include "adq/messaging/OverlayMessage.hpp"
+#include "adq/messaging/SignedValue.hpp"
+#include "adq/messaging/StringBody.hpp"
+#include "adq/messaging/ValueContribution.hpp"
+#include "adq/messaging/ValueTuple.hpp"
+
 #include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
-
-namespace adq {
-namespace messaging {
-class MessageBody;
-class StringBody;
-class OverlayMessage;
-struct ValueTuple;
-struct ValueContribution;
-struct SignedValue;
-} /* namespace messaging */
-} /* namespace adq */
 
 namespace adq {
 
@@ -72,8 +67,9 @@ public:
      * @return A string representing the bits of the ciphertext (as a
      * StringBody since it will probably be sent in a message)
      */
+    template <typename RecordType>
     virtual std::shared_ptr<messaging::StringBody> rsa_encrypt(
-        const std::shared_ptr<messaging::ValueTuple>& value, const int target_meter_id) = 0;
+        const std::shared_ptr<messaging::ValueTuple<RecordType>>& value, const int target_meter_id) = 0;
 
     //        virtual std::shared_ptr<messaging::ValueTuple> rsa_decrypt(
     //                const std::shared_ptr<messaging::MessageBody>& value) = 0;
@@ -84,7 +80,8 @@ public:
      * @param value The ValueContribution to sign
      * @param signature The signature over the ValueContribution
      */
-    virtual void rsa_sign(const messaging::ValueContribution& value, SignatureArray& signature) = 0;
+    template <typename RecordType>
+    virtual void rsa_sign(const messaging::ValueContribution<RecordType>& value, SignatureArray& signature) = 0;
 
     /**
      * Verifies the signature on a ValueContribution against the public key
@@ -95,7 +92,8 @@ public:
      * the signature
      * @return True if the signature is valid, false if it is not
      */
-    virtual bool rsa_verify(const messaging::ValueContribution& value,
+    template <typename RecordType>
+    virtual bool rsa_verify(const messaging::ValueContribution<RecordType>& value,
                             const SignatureArray& signature, const int signer_meter_id) = 0;
 
     /**
@@ -104,7 +102,8 @@ public:
      * @param value The SignedValue to sign
      * @param signature The signature over the SignedValue
      */
-    virtual void rsa_sign(const messaging::SignedValue& value, SignatureArray& signature) = 0;
+    template <typename RecordType>
+    virtual void rsa_sign(const messaging::SignedValue<RecordType>& value, SignatureArray& signature) = 0;
 
     /**
      * Verifies the signature on a SignedValue against the public key of
@@ -115,7 +114,8 @@ public:
      * the signature
      * @return True if the signature is valid, false if it is not
      */
-    virtual bool rsa_verify(const messaging::SignedValue& value, const SignatureArray& signature,
+    template <typename RecordType>
+    virtual bool rsa_verify(const messaging::SignedValue<RecordType>& value, const SignatureArray& signature,
                             const int signer_meter_id) = 0;
 
     virtual ~CryptoLibrary() = 0;

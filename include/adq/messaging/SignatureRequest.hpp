@@ -1,11 +1,11 @@
 #pragma once
 
-#include <memory>
-#include <string>
-
 #include "Message.hpp"
 #include "MessageType.hpp"
 #include "StringBody.hpp"
+
+#include <memory>
+#include <string>
 
 namespace adq {
 namespace messaging {

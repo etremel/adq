@@ -8,5 +8,6 @@ AccessModifierOffset: -4
 ColumnLimit:     0
 SpaceBeforeParens: Never
 SpaceInEmptyParentheses: false
+IncludeBlocks: Preserve
 ...
 

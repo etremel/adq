@@ -7,12 +7,12 @@
 
 #pragma once
 
-#include <memory>
-#include <ostream>
-
 #include "MessageBody.hpp"
 #include "MessageBodyType.hpp"
-#include <adq/util/Hash.hpp>
+#include "adq/util/Hash.hpp"
+
+#include <memory>
+#include <ostream>
 
 namespace adq {
 namespace messaging {

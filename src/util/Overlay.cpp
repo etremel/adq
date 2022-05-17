@@ -1,12 +1,12 @@
+#include "adq/util/Overlay.hpp"
+#include "adq/util/PrimeModuli.hpp"
+
 #include <map>
 #include <tuple>
 #include <vector>
 #include <cstdint>
 #include <random>
 #include <stdexcept>
-
-#include <adq/util/Overlay.hpp>
-#include <adq/util/PrimeModuli.hpp>
 
 namespace adq {
 namespace util {

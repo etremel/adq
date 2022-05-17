@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mutils-serialization/SerializationSupport.hpp>
+#include "adq/mutils-serialization/SerializationSupport.hpp"
 
 namespace adq {
 

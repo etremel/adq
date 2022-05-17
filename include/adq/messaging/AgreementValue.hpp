@@ -7,10 +7,10 @@
 
 #pragma once
 
-#include <ostream>
-
 #include "MessageBody.hpp"
 #include "SignedValue.hpp"
+
+#include <ostream>
 
 namespace adq {
 
@@ -18,9 +18,10 @@ using SignatureArray = std::array<uint8_t, 256>;
 
 namespace messaging {
 
+template<typename RecordType>
 struct AgreementValue : public MessageBody {
     static const constexpr MessageBodyType type = MessageBodyType::AGREEMENT_VALUE;
-    SignedValue signed_value;
+    SignedValue<RecordType> signed_value;
     /** The ID of the node that signed the SignedValue (after accepting it). */
     int accepter_id;
     /** The signature over the entire SignedValue of a node that accepted the value. */
@@ -46,10 +47,13 @@ struct AgreementValue : public MessageBody {
     static std::unique_ptr<AgreementValue> from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer);
 };
 
-inline std::ostream& operator<<(std::ostream& out, const AgreementValue val) {
+template<typename RecordType>
+std::ostream& operator<<(std::ostream& out, const AgreementValue<RecordType> val) {
     return out << "{AgreementValue: " << val.signed_value << " accepted by " << val.accepter_id << "}";
 }
 
 }  // namespace messaging
 
 }  // namespace adq
+
+#include "detail/AgreementValue_impl.hpp"

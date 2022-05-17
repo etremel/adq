@@ -21,14 +21,15 @@ namespace messaging {
  * Represents a signed (round, value, proxies) tuple that can be contributed to
  * an aggregation query.
  */
+template<typename RecordType>
 struct ValueContribution : public MessageBody {
     static const constexpr MessageBodyType type = MessageBodyType::VALUE_CONTRIBUTION;
-    ValueTuple value;
+    ValueTuple<RecordType> value;
     SignatureArray signature;
-    ValueContribution(const ValueTuple& value) : value(value) {
+    ValueContribution(const ValueTuple<RecordType>& value) : value(value) {
         signature.fill(0);
     }
-    ValueContribution(const ValueTuple& value, const SignatureArray& signature) : value(value), signature(signature) {}
+    ValueContribution(const ValueTuple<RecordType>& value, const SignatureArray& signature) : value(value), signature(signature) {}
     virtual ~ValueContribution() = default;
 
     inline bool operator==(const MessageBody& _rhs) const {
@@ -45,7 +46,8 @@ struct ValueContribution : public MessageBody {
     static std::unique_ptr<ValueContribution> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 };
 
-inline std::ostream& operator<<(std::ostream& stream, const ValueContribution& vc) {
+template<typename RecordType>
+std::ostream& operator<<(std::ostream& stream, const ValueContribution<RecordType>& vc) {
     return stream << "{ValueContribution: " << vc.value << "}";
 }
 
@@ -66,3 +68,5 @@ struct hash<adq::messaging::ValueContribution> {
 };
 
 }  // namespace std
+
+#include "detail/ValueContribution_impl.hpp"

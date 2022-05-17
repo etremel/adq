@@ -1,22 +1,18 @@
-/**
- * @file ValueContribution.cpp
- *
- * @date Nov 7, 2016
- * @author edward
- */
+#include "../ValueContribution.hpp"
 
+#include "adq/mutils-serialization/SerializationSupport.hpp"
+
+#include <cstring>
 #include <memory>
-
-#include <adq/messaging/ValueContribution.hpp>
-
-#include <mutils-serialization/SerializationSupport.hpp>
+#include <vector>
 
 namespace adq {
+
 namespace messaging {
+//const constexpr MessageBodyType ValueContribution::type;
 
-const constexpr MessageBodyType ValueContribution::type;
-
-std::size_t ValueContribution::to_bytes(uint8_t* buffer) const {
+template<typename RecordType>
+std::size_t ValueContribution<RecordType>::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     bytes_written += mutils::to_bytes(type, buffer);
     //Unpack each member of value and write it individually, since ValueTuple isn't ByteSerializable
@@ -28,7 +24,8 @@ std::size_t ValueContribution::to_bytes(uint8_t* buffer) const {
     return bytes_written;
 }
 
-void ValueContribution::post_object(const std::function<void(const uint8_t* const, std::size_t)>& consumer_function) const {
+template<typename RecordType>
+void ValueContribution<RecordType>::post_object(const std::function<void(const uint8_t* const, std::size_t)>& consumer_function) const {
     mutils::post_object(consumer_function, type);
     mutils::post_object(consumer_function, value.query_num);
     mutils::post_object(consumer_function, value.value);
@@ -36,13 +33,14 @@ void ValueContribution::post_object(const std::function<void(const uint8_t* cons
     consumer_function((const uint8_t*) signature.data(), signature.size() * sizeof(SignatureArray::value_type));
 }
 
-std::size_t ValueContribution::bytes_size() const {
+template<typename RecordType>
+std::size_t ValueContribution<RecordType>::bytes_size() const {
     return mutils::bytes_size(type) + mutils::bytes_size(value.query_num) +
             mutils::bytes_size(value.value) + mutils::bytes_size(value.proxies) +
             (signature.size() * sizeof(SignatureArray::value_type));
 }
-
-std::unique_ptr<ValueContribution> ValueContribution::from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) {
+template<typename RecordType>
+std::unique_ptr<ValueContribution<RecordType>> ValueContribution<RecordType>::from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) {
     std::size_t bytes_read = 0;
     MessageBodyType type;
     std::memcpy(&type, buffer + bytes_read, sizeof(type));
@@ -51,8 +49,8 @@ std::unique_ptr<ValueContribution> ValueContribution::from_bytes(mutils::Deseria
     int query_num;
     std::memcpy(&query_num, buffer + bytes_read, sizeof(query_num));
     bytes_read += sizeof(query_num);
-    std::unique_ptr<std::vector<FixedPoint_t>> value_vector =
-            mutils::from_bytes<std::vector<FixedPoint_t>>(nullptr, buffer + bytes_read);
+    std::unique_ptr<RecordType> value_vector =
+            mutils::from_bytes<RecordType>(nullptr, buffer + bytes_read);
     bytes_read += mutils::bytes_size(*value_vector);
     std::unique_ptr<std::vector<int>> proxy_vector =
             mutils::from_bytes<std::vector<int>>(nullptr, buffer + bytes_read);
@@ -64,9 +62,8 @@ std::unique_ptr<ValueContribution> ValueContribution::from_bytes(mutils::Deseria
 
     //This will unnecessarily copy the vectors into the new ValueTuple, but
     //it's the only thing we can do because from_bytes returns unique_ptr
-    return std::make_unique<ValueContribution>(ValueTuple{query_num, *value_vector, *proxy_vector}, signature);
-}
-
+    return std::make_unique<ValueContribution>(ValueTuple<RecordType>{query_num, *value_vector, *proxy_vector}, signature);
 }
 }
 
+}

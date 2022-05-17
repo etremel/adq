@@ -4,15 +4,12 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 add_library(messaging OBJECT
     AggregationMessage.cpp
-    AgreementValue.cpp
     OverlayMessage.cpp
     OverlayTransportMessage.cpp
     PathOverlayMessage.cpp
     QueryRequest.cpp
     SignatureRequest.cpp
-    SignatureResponse.cpp
-    SignedValue.cpp
-    ValueContribution.cpp)
+    SignatureResponse.cpp)
 
 target_include_directories(messaging PRIVATE
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>)

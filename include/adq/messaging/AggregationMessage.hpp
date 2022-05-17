@@ -7,20 +7,21 @@
 
 #pragma once
 
+#include "adq/core/InternalTypes.hpp"
+#include "adq/util/Hash.hpp"
+#include "Message.hpp"
+#include "MessageType.hpp"
+#include "MessageBody.hpp"
+#include "MessageBodyType.hpp"
+#include "adq/mutils-serialization/SerializationSupport.hpp"
+
 #include <cstddef>
 #include <memory>
 #include <iterator>
 #include <ostream>
 #include <unordered_map>
 #include <vector>
-#include <mutils-serialization/SerializationSupport.hpp>
 
-#include <adq/core/InternalTypes.hpp>
-#include <adq/util/Hash.hpp>
-#include "Message.hpp"
-#include "MessageType.hpp"
-#include "MessageBody.hpp"
-#include "MessageBodyType.hpp"
 
 namespace adq {
 namespace messaging {

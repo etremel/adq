@@ -1,21 +1,22 @@
 #pragma once
 
-#include <asio.hpp>
-#include <memory>
-#include <spdlog/spdlog.h>
-#include <map>
+#include "adq/core/InternalTypes.hpp"
 
-#include <adq/core/InternalTypes.hpp>
+#include <spdlog/spdlog.h>
+#include <asio.hpp>
+#include <map>
+#include <memory>
 
 namespace adq {
 
+template <typename RecordType>
 class NetworkManager {
 private:
     std::shared_ptr<spdlog::logger> logger;
     /** The io_context that all the sockets will use */
     asio::io_context network_io_context;
     /** The QueryClient that owns this NetworkManager */
-    QueryClient& query_client;
+    QueryClient<RecordType>& query_client;
     /** Maps client IDs to address/port pairs. */
     std::map<int, asio::ip::tcp::endpoint> id_to_ip_map;
     /** Maps address/port pairs to client IDs */
@@ -39,7 +40,6 @@ private:
      * other clients
      */
     asio::ip::tcp::acceptor connection_listener;
-
 
     /**
      * Handler function for ASIO accept events.
@@ -70,7 +70,8 @@ private:
     void receive_message(const std::vector<uint8_t>& message_bytes);
 
 public:
-    NetworkManager(QueryClient& owning_client, const asio::ip::tcp::endpoint& my_tcp_address, const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map);
+    NetworkManager(QueryClient<RecordType>& owning_client, const asio::ip::tcp::endpoint& my_tcp_address,
+                   const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map);
 
     /**
      * Starts waiting for network events by giving control of the calling
@@ -107,3 +108,5 @@ public:
     bool send(const std::shared_ptr<messaging::SignatureRequest>& message);
 };
 }  // namespace adq
+
+#include "detail/NetworkManager_impl.hpp"

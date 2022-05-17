@@ -1,11 +1,12 @@
 #pragma once
 
+#include "adq/mutils-serialization/SerializationSupport.hpp"
+
 #include <iostream>
 #include <iomanip>
 #include <functional>
 #include <vector>
 #include <cstddef>
-#include <mutils-serialization/SerializationSupport.hpp>
 
 namespace adq {
 namespace util {
@@ -55,11 +56,11 @@ class FixedPoint : public mutils::ByteRepresentable {
 
         //Serialization support
         std::size_t bytes_size() const { return mutils::bytes_size(m); }
-        std::size_t to_bytes(char* buf) const { return mutils::to_bytes(m, buf); }
-        void post_object(const std::function<void (char const * const,std::size_t)>& f) const {
+        std::size_t to_bytes(uint8_t* buf) const { return mutils::to_bytes(m, buf); }
+        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& f) const {
             mutils::post_object(f, m);
         }
-        static std::unique_ptr<FixedPoint> from_bytes(mutils::DeserializationManager<>* p, const char* buf) {
+        static std::unique_ptr<FixedPoint> from_bytes(mutils::DeserializationManager* p, const uint8_t* buf) {
             Base internal_int;
             std::memcpy(&internal_int, buf, sizeof(Base));
             //std::make_unique bizarrely fails if used with a private constructor,
