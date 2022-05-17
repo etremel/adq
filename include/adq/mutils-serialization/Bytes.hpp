@@ -10,13 +10,13 @@ namespace mutils{
  */
 	struct Bytes : public ByteRepresentable{
 
-		char const * const bytes;
+		uint8_t const * const bytes;
 		const std::size_t size;
 
 		Bytes(decltype(bytes) b, decltype(size) s)
 			:bytes(b),size(s){}
 
-		std::size_t to_bytes(char* v) const{
+		std::size_t to_bytes(uint8_t* v) const{
 			((std::size_t*)(v))[0] = size;
 			memcpy(v + sizeof(size),bytes,size);
 			return size + sizeof(size);
@@ -26,8 +26,8 @@ namespace mutils{
 			return size + sizeof(size);
 		}
 
-		void post_object(const std::function<void (char const * const,std::size_t)>& f) const{
-			f((char*)&size,sizeof(size));
+		void post_object(const std::function<void (uint8_t const * const,std::size_t)>& f) const{
+			f((uint8_t*)&size,sizeof(size));
 			f(bytes,size);
 		}
 
@@ -39,7 +39,7 @@ namespace mutils{
 			static_assert(std::is_same<T,V>::value,"Error: from_bytes disabled for mutils::Bytes. See comment in source.");
 		}
 
-		static context_ptr<Bytes> from_bytes_noalloc(DeserializationManager *, char const * const v)  {
+		static context_ptr<Bytes> from_bytes_noalloc(DeserializationManager *, uint8_t const * const v)  {
 			return context_ptr<Bytes>{new Bytes(v + sizeof(std::size_t),((std::size_t*)(v))[0])};
 		}
 
