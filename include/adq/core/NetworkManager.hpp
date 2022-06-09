@@ -31,9 +31,15 @@ private:
     /**
      * Contains one receive buffer per client for reading the initial
      * "size of message" data for an incoming message. These will be
-     * supplied to the asynchronous read requests.
+     * supplied to asynchronous read requests.
      */
-    std::map<int, std::array<uint8_t, sizeof(std::size_t)>> receive_buffers;
+    std::map<int, std::array<uint8_t, sizeof(std::size_t)>> length_buffers;
+    /**
+     * Contains one receive buffer per client that will be used to read a
+     * (complete) message from a socket. These will be allocated dynamically
+     * once the size of an incoming message is known.
+     */
+    std::map<int, std::vector<uint8_t>> incoming_message_buffers;
 
     /**
      * A "server socket" that listens for incoming connections from
@@ -47,11 +53,18 @@ private:
     void handle_accept(const asio::error_code& error, asio::ip::tcp::socket incoming_socket);
 
     /**
-     * Handler function for ASIO read events. One copy will be bound
-     * to each socket, with the first parameter set to the corresponding
-     * client's ID.
+     * Handles an asynchronous read event for the "size of message" header
+     * from a single client. When ASIO calls this function, the message size
+     * should be in the length_buffers entry for the specified client.
      */
-    void handle_read(int sender_id, const asio::error_code& error, std::size_t bytes_read);
+    void handle_size_read(int sender_id, const asio::error_code& error, std::size_t bytes_read);
+
+    /**
+     * Handles an asynchronous read event for the body of a message from a client.
+     * When ASIO calls this function, the incoming message buffer for that client
+     * should be populated with data.
+     */
+    void handle_body_read(int sender_id, const asio::error_code& error, std::size_t bytes_read);
 
     /**
      * Starts an asynchronous accept request on the connection listener.
@@ -60,17 +73,55 @@ private:
 
     /**
      * Starts an asynchronous read on the socket for the specified client ID
+     * that expects to read exactly sizeof(size_t) bytes. This is the standard
+     * "header" of a message indicating the length of its body.
+     *
+     * @param sender_id The ID of the client to read from
      */
-    void do_read(int sender_id);
+    void start_size_read(int sender_id);
+
+    /**
+     * Starts an asynchronous read on the socket for the specified client ID
+     * that expects to read the specified number of bytes. This will allocate
+     * a buffer of the specified size in incoming_message_buffers.
+     *
+     * @param sender_id The ID of the client to read from
+     * @param body_size The number of bytes to read
+     */
+    void start_body_read(int sender_id, std::size_t body_size);
+
     /**
      * Performs the application-level logic of reading a message and dispatching
      * it to the correct handler, assuming the entire message has already been
      * received into a buffer.
+     *
+     * @param message_bytes A reference to the byte buffer containing the body of the message
      */
     void receive_message(const std::vector<uint8_t>& message_bytes);
 
+    /**
+     * Handles an asynchronous write event for one of the "send" functions. Since
+     * there's nothing left to do once a write completes, this just does error
+     * reporting.
+     *
+     * @param recipient_id The ID of the client that the send was writing to
+     * @param error An ASIO error code, if any
+     * @param bytes_sent The number of bytes successfully written
+     */
+    void handle_write_complete(int recipient_id, const asio::error_code& error, std::size_t bytes_sent);
+
 public:
-    NetworkManager(QueryClient<RecordType>& owning_client, const asio::ip::tcp::endpoint& my_tcp_address,
+    /**
+     * Constructs a NetworkManager that is owned by a QueryClient object and
+     * listens for connections on a particular port.
+     *
+     * @param owning_client A reference to the QueryClient object that created
+     * this NetworkManager; used to deliver received messages back to the QueryClient
+     * @param service_port The port that the NetworkManager should listen on for
+     * incoming connections.
+     * @param client_id_to_ip_map The QueryClient's map from client IDs to IP addresses
+     */
+    NetworkManager(QueryClient<RecordType>& owning_client, uint16_t service_port,
                    const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map);
 
     /**

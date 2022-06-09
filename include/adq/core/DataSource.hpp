@@ -2,6 +2,8 @@
 
 #include "adq/core/QueryFunctions.hpp"
 
+#include <map>
+
 namespace adq {
 /**
  * Represents the application-specific source of data that a query will collect

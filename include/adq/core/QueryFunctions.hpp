@@ -1,7 +1,5 @@
 #pragma once
 
-#include "adq/util/FixedPoint.hpp"
-
 #include <functional>
 #include <cstdint>
 #include <vector>

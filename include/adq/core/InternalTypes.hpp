@@ -20,6 +20,9 @@ template<typename RecordType>
 class NetworkManager;
 template<typename RecordType>
 class ProtocolState;
+template <typename RecordType>
+class QueryClient;
+
 class CryptoLibrary;
 
 namespace messaging {

@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+set_and_check(adq_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+set(adq_LIBRARIES "-L@PACKAGE_CMAKE_INSTALL_LIBDIR@ -ladq")
+include("@PACKAGE_ConfigPackageLocation@/adqTargets.cmake")
+
+check_required_components(adq)
