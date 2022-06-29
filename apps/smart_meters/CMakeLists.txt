@@ -1,5 +1,5 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(SimSmartMeterClient SimSmartMeterClient.cpp SimSmartMeter.cpp)
+add_executable(SimSmartMeterClient SimSmartMeterClient.cpp SimSmartMeter.cpp DeviceConfig.cpp)
 target_link_libraries(SimSmartMeterClient adq)
 target_compile_features(SimSmartMeterClient PUBLIC cxx_std_17)
