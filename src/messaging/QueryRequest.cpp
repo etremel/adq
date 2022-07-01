@@ -98,7 +98,10 @@ std::unique_ptr<QueryRequest> QueryRequest::from_bytes(mutils::DeserializationMa
 }
 
 std::ostream& operator<<(std::ostream& out, const QueryRequest& qr) {
-    return out << "{QueryRequest: Type=" << qr.request_type << " | query_number=" << qr.query_number << " | time_window=" << qr.time_window << " }";
+    return out << "{QueryRequest: query_number=" << qr.query_number
+               << " | select_opcode=" << qr.select_function_opcode
+               << " | filter_opcode=" << qr.filter_function_opcode
+               << " | aggregate_opcode=" << qr.aggregate_function_opcode << "}";
 }
 
 } /* namespace messaging */

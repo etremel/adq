@@ -9,7 +9,9 @@
 namespace adq {
 
 namespace messaging {
-//const constexpr MessageBodyType ValueContribution::type;
+
+template<typename RecordType>
+const constexpr MessageBodyType ValueContribution<RecordType>::type;
 
 template<typename RecordType>
 std::size_t ValueContribution<RecordType>::to_bytes(uint8_t* buffer) const {
@@ -62,7 +64,7 @@ std::unique_ptr<ValueContribution<RecordType>> ValueContribution<RecordType>::fr
 
     //This will unnecessarily copy the vectors into the new ValueTuple, but
     //it's the only thing we can do because from_bytes returns unique_ptr
-    return std::make_unique<ValueContribution>(ValueTuple<RecordType>{query_num, *value_vector, *proxy_vector}, signature);
+    return std::make_unique<ValueContribution<RecordType>>(ValueTuple<RecordType>{query_num, *value_vector, *proxy_vector}, signature);
 }
 }
 

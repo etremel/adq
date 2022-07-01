@@ -75,6 +75,10 @@ enum class IncomeLevel { POOR,
  * functions as Select, Filter, and Aggregate functions in the constructor.
  */
 class SimSmartMeter : public adq::DataSource<std::vector<adq::FixedPoint_t>> {
+public:
+    /** A type alias for the type this class supplies as the RecordType parameter for adq::DataSource */
+    using DataRecordType = std::vector<adq::FixedPoint_t>;
+
 private:
     std::vector<std::pair<Device, DeviceState>> shiftable_devices;
     std::vector<std::pair<Device, DeviceState>> nonshiftable_devices;

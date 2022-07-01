@@ -127,8 +127,8 @@ void NetworkManager<RecordType>::receive_message(const std::vector<uint8_t>& mes
                 query_client.handle_message(message);
                 break;
             }
-            case AggregationMessage::type: {
-                std::shared_ptr<AggregationMessage> message(mutils::from_bytes<AggregationMessage>(nullptr, buffer));
+            case MessageType::AGGREGATION: {
+                std::shared_ptr<AggregationMessage<RecordType>> message(mutils::from_bytes<AggregationMessage<RecordType>>(nullptr, buffer));
                 buffer += mutils::bytes_size(*message);
                 query_client.handle_message(message);
                 break;
@@ -185,7 +185,7 @@ bool NetworkManager<RecordType>::send(const std::list<std::shared_ptr<messaging:
 }
 
 template <typename RecordType>
-bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id) {
+bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::AggregationMessage<RecordType>>& message, const int recipient_id) {
     // Construct a new socket for this node if there is not one already in the map
     auto socket_map_find = sockets_by_id.lower_bound(recipient_id);
     if(socket_map_find == sockets_by_id.end() || socket_map_find->first != recipient_id) {

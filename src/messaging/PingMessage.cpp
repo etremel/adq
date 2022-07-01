@@ -1,14 +1,9 @@
-/**
- * @file PingMessage.cpp
- *
- * @date Oct 13, 2016
- * @author edward
- */
+#include "adq/messaging/PingMessage.hpp"
 
-#include <adq/messaging/PingMessage.hpp>
 #include <cassert>
 #include <cstddef>
 #include <cstring>
+#include <iostream>
 
 namespace adq {
 namespace messaging {
@@ -21,7 +16,7 @@ std::size_t PingMessage::bytes_size() const {
            mutils::bytes_size(is_response);
 }
 
-//This completely overrides Message::to_bytes, since PingMessage ignores the body field
+// This completely overrides Message::to_bytes, since PingMessage ignores the body field
 std::size_t PingMessage::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     std::memcpy(buffer + bytes_written, &type, sizeof(MessageType));

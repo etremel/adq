@@ -5,28 +5,31 @@
  * @author edward
  */
 
-#include <ostream>
-#include <memory>
+#include "adq/messaging/OverlayMessage.hpp"
+#include "adq/core/CryptoLibrary.hpp"
+#include "adq/messaging/AgreementValue.hpp"
+#include "adq/messaging/PathOverlayMessage.hpp"
+#include "adq/messaging/QueryRequest.hpp"
+#include "adq/messaging/SignedValue.hpp"
+#include "adq/messaging/StringBody.hpp"
+#include "adq/messaging/ValueContribution.hpp"
+#include "adq/mutils-serialization/SerializationSupport.hpp"
+
+#include <cstdint>
 #include <cstring>
-#include <mutils-serialization/SerializationSupport.hpp>
-
-#include <adq/messaging/OverlayMessage.hpp>
-
-#include <adq/messaging/AgreementValue.hpp>
-#include <adq/messaging/PathOverlayMessage.hpp>
-#include <adq/messaging/QueryRequest.hpp>
-#include <adq/messaging/SignedValue.hpp>
-#include <adq/messaging/StringBody.hpp>
-#include <adq/messaging/ValueContribution.hpp>
+#include <memory>
+#include <ostream>
 
 namespace adq {
 namespace messaging {
 
 const constexpr MessageBodyType OverlayMessage::type;
 
-std::ostream& operator<< (std::ostream& out, const OverlayMessage& message) {
-    out << "{QueryNum=" << message.query_num << "|Destination=" << message.destination << "|Body=" ;
-    //Force C++ to use dynamic dispatch on operator<< even though it doesn't want to
+std::ostream& operator<<(std::ostream& out, const OverlayMessage& message) {
+    out << "{QueryNum=" << message.query_num << "|Destination=" << message.destination << "|Body=";
+    // Force C++ to use dynamic dispatch on operator<< even though it doesn't want to
+    // PROBLEM: Most of these now need a template parameter RecordType, but OverlayMessage doesn't know it
+    /*
     if(message.body == nullptr) {
         out << "null";
     } else if(auto av_body = std::dynamic_pointer_cast<AgreementValue>(message.body)) {
@@ -44,20 +47,18 @@ std::ostream& operator<< (std::ostream& out, const OverlayMessage& message) {
     } else {
         out << "UNKNOWN TYPE @ " << message.body;
     }
+    */
     out << "}";
     return out;
 }
 
 std::size_t OverlayMessage::bytes_size() const {
-    return mutils::bytes_size(type)
-            + mutils::bytes_size(query_num) + mutils::bytes_size(destination)
-            + mutils::bytes_size(is_encrypted) + mutils::bytes_size(flood)
-            + mutils::bytes_size(false) //Represents the "remaining_body" variable
-            + (body == nullptr ? 0 : mutils::bytes_size(*body));
+    return mutils::bytes_size(type) + mutils::bytes_size(query_num) + mutils::bytes_size(destination) + mutils::bytes_size(is_encrypted) + mutils::bytes_size(flood) + mutils::bytes_size(false)  // Represents the "remaining_body" variable
+           + (body == nullptr ? 0 : mutils::bytes_size(*body));
 }
 
-//Is it OK to implement post_object this way?? Or do I have to recursively call post_object,
-//which would require another _common method for the superclass?
+// Is it OK to implement post_object this way?? Or do I have to recursively call post_object,
+// which would require another _common method for the superclass?
 void OverlayMessage::post_object(const std::function<void(const uint8_t* const, std::size_t)>& consumer_function) const {
     uint8_t buffer[bytes_size()];
     to_bytes(buffer);
@@ -66,7 +67,7 @@ void OverlayMessage::post_object(const std::function<void(const uint8_t* const, 
 
 std::size_t OverlayMessage::to_bytes_common(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
-    //For POD types, this is just a shortcut to memcpy(buffer+bytes_written, &var, sizeof(var))
+    // For POD types, this is just a shortcut to memcpy(buffer+bytes_written, &var, sizeof(var))
     bytes_written += mutils::to_bytes(query_num, buffer + bytes_written);
     bytes_written += mutils::to_bytes(destination, buffer + bytes_written);
     bytes_written += mutils::to_bytes(is_encrypted, buffer + bytes_written);
@@ -87,19 +88,19 @@ std::size_t OverlayMessage::to_bytes(uint8_t* buffer) const {
     return bytes_written;
 }
 
-std::unique_ptr<OverlayMessage> OverlayMessage::from_bytes(mutils::DeserializationManager* p, uint8_t const * buffer) {
+std::unique_ptr<OverlayMessage> OverlayMessage::from_bytes(mutils::DeserializationManager* p, uint8_t const* buffer) {
     std::size_t bytes_read = 0;
     MessageBodyType type;
     std::memcpy(&type, buffer + bytes_read, sizeof(type));
     bytes_read += sizeof(type);
 
-    //We can't use the private constructor with make_unique
+    // We can't use the private constructor with make_unique
     auto constructed_message = std::unique_ptr<OverlayMessage>(new OverlayMessage());
     bytes_read += from_bytes_common(*constructed_message, buffer + bytes_read);
     return std::move(constructed_message);
 }
 
-std::size_t OverlayMessage::from_bytes_common(OverlayMessage& partial_overlay_message, uint8_t const * buffer) {
+std::size_t OverlayMessage::from_bytes_common(OverlayMessage& partial_overlay_message, uint8_t const* buffer) {
     std::size_t bytes_read = 0;
     std::memcpy(&partial_overlay_message.query_num, buffer + bytes_read, sizeof(partial_overlay_message.query_num));
     bytes_read += sizeof(partial_overlay_message.query_num);
@@ -114,13 +115,29 @@ std::size_t OverlayMessage::from_bytes_common(OverlayMessage& partial_overlay_me
     std::memcpy(&remaining_body, buffer + bytes_read, sizeof(remaining_body));
     bytes_read += sizeof(remaining_body);
     if(remaining_body) {
-        partial_overlay_message.body = mutils::from_bytes<MessageBody>(nullptr, buffer+bytes_read);
+        partial_overlay_message.body = mutils::from_bytes<MessageBody>(nullptr, buffer + bytes_read);
         bytes_read += mutils::bytes_size(*partial_overlay_message.body);
     }
 
     return bytes_read;
 }
 
-} /* namespace messaging */
-} /* namespace pddm */
+std::shared_ptr<OverlayMessage> build_encrypted_onion(const std::list<int>& path, std::shared_ptr<MessageBody> payload,
+                                                      const int query_num, CryptoLibrary& crypto_library) {
+    // Start with the last layer of the onion, which actually contains the payload
+    auto current_layer = std::make_shared<OverlayMessage>(query_num, path.back(), std::move(payload));
+    crypto_library.rsa_encrypt(*current_layer, path.back());
+    // Build the onion from the end of the list to the beginning
+    for(auto path_iter = path.rbegin(); path_iter != path.rend(); ++path_iter) {
+        if(path_iter == path.rbegin())
+            continue;
+        // Make the previous layer the payload of a new message, whose destination is the next hop
+        auto next_layer = std::make_shared<OverlayMessage>(query_num, *path_iter, current_layer);
+        crypto_library.rsa_encrypt(*next_layer, *path_iter);
+        current_layer = next_layer;
+    }
+    return current_layer;
+}
 
+} /* namespace messaging */
+}  // namespace adq

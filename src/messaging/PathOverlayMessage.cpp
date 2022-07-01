@@ -1,26 +1,19 @@
-/**
- * @file PathOverlayMessage.cpp
- *
- * @date Oct 14, 2016
- * @author edward
- */
+#include "adq/messaging/PathOverlayMessage.hpp"
 
-#include <adq/messaging/PathOverlayMessage.hpp>
+#include "adq/mutils-serialization/SerializationSupport.hpp"
+#include "adq/util/OStreams.hpp"
 
 #include <cstring>
 #include <ostream>
 #include <sstream>
 #include <string>
-#include <mutils-serialization/SerializationSupport.hpp>
-
-#include <adq/util/OStreams.hpp>
 
 namespace adq {
 namespace messaging {
 
 const constexpr MessageBodyType PathOverlayMessage::type;
 
-std::ostream& operator<< (std::ostream& out, const PathOverlayMessage& message) {
+std::ostream& operator<<(std::ostream& out, const PathOverlayMessage& message) {
     std::stringstream super_streamout;
     super_streamout << static_cast<OverlayMessage>(message);
     std::string output_string = super_streamout.str();
@@ -30,7 +23,6 @@ std::ostream& operator<< (std::ostream& out, const PathOverlayMessage& message) 
     return out << output_string;
 }
 
-
 std::size_t PathOverlayMessage::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     bytes_written += mutils::to_bytes(type, buffer);
@@ -39,7 +31,7 @@ std::size_t PathOverlayMessage::to_bytes(uint8_t* buffer) const {
     return bytes_written;
 }
 
-//Is it OK to implement post_object this way?? it seems much easier than recursive post_object calls
+// Is it OK to implement post_object this way?? it seems much easier than recursive post_object calls
 void PathOverlayMessage::post_object(const std::function<void(const uint8_t* const, std::size_t)>& function) const {
     uint8_t buffer[bytes_size()];
     to_bytes(buffer);
@@ -47,11 +39,11 @@ void PathOverlayMessage::post_object(const std::function<void(const uint8_t* con
 }
 
 std::size_t PathOverlayMessage::bytes_size() const {
-    //The superclass bytes_size already includes the size of a MessageBodyType
+    // The superclass bytes_size already includes the size of a MessageBodyType
     return OverlayMessage::bytes_size() + mutils::bytes_size(remaining_path);
 }
 
-std::unique_ptr<PathOverlayMessage> PathOverlayMessage::from_bytes(mutils::DeserializationManager* m, uint8_t const * buffer) {
+std::unique_ptr<PathOverlayMessage> PathOverlayMessage::from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer) {
     std::size_t bytes_read = 0;
     MessageBodyType type;
     std::memcpy(&type, buffer + bytes_read, sizeof(type));
@@ -66,5 +58,5 @@ std::unique_ptr<PathOverlayMessage> PathOverlayMessage::from_bytes(mutils::Deser
     return constructed_message;
 }
 
-}
-}
+}  // namespace messaging
+}  // namespace adq

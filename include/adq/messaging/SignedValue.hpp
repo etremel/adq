@@ -1,13 +1,15 @@
 #pragma once
 
-#include <iostream>
-#include <map>
-#include <memory>
-#include <utility>
-
 #include "MessageBody.hpp"
 #include "MessageBodyType.hpp"
 #include "ValueContribution.hpp"
+#include "adq/mutils-serialization/SerializationSupport.hpp"
+
+#include <array>
+#include <ostream>
+#include <map>
+#include <memory>
+#include <utility>
 
 namespace adq {
 
@@ -24,11 +26,12 @@ public:
      * message's ValueContribution. */
     std::map<int, SignatureArray> signatures;
     SignedValue() : value(nullptr) {}
-    SignedValue(const std::shared_ptr<ValueContribution<RecordType>>& value,
-                const std::map<int, SignatureArray>& signatures) : value(value), signatures(signatures) {}
+    SignedValue(std::shared_ptr<ValueContribution<RecordType>> value,
+                const std::map<int, SignatureArray>& signatures)
+        : value(std::move(value)), signatures(signatures) {}
 
     inline bool operator==(const MessageBody& _rhs) const {
-        if(auto* rhs = dynamic_cast<const SignedValue*>(&_rhs))
+        if(auto* rhs = dynamic_cast<const SignedValue<RecordType>*>(&_rhs))
             return (rhs->value == nullptr ? value == rhs->value : *value == *(rhs->value)) && this->signatures == rhs->signatures;
         else
             return false;
@@ -36,7 +39,7 @@ public:
     std::size_t bytes_size() const override;
     std::size_t to_bytes(uint8_t* buffer) const override;
     void post_object(const std::function<void(uint8_t const* const, std::size_t)>& function) const override;
-    static std::unique_ptr<SignedValue> from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer);
+    static std::unique_ptr<SignedValue<RecordType>> from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer);
 
 private:
     // Helper functions for the signatures map

@@ -7,14 +7,14 @@
 
 #pragma once
 
+#include "OverlayMessage.hpp"
+#include "adq/mutils-serialization/SerializationSupport.hpp"
+
 #include <cstddef>
 #include <functional>
 #include <list>
 #include <memory>
-#include <mutils-serialization/SerializationSupport.hpp>
 #include <ostream>
-
-#include "OverlayMessage.hpp"
 
 namespace adq {
 namespace messaging {
@@ -27,28 +27,25 @@ namespace messaging {
  * an OverlayTransportMessage.
  */
 class PathOverlayMessage : public OverlayMessage {
-    public:
-        static const constexpr MessageBodyType type = MessageBodyType::PATH_OVERLAY;
-        std::list<int> remaining_path;
-        PathOverlayMessage(const int query_num, const std::list<int>& path, const std::shared_ptr<MessageBody>& body) :
-            OverlayMessage(query_num, path.front(), body), remaining_path(++path.begin(), path.end()) { }
-        virtual ~PathOverlayMessage() = default;
+public:
+    static const constexpr MessageBodyType type = MessageBodyType::PATH_OVERLAY;
+    std::list<int> remaining_path;
+    PathOverlayMessage(const int query_num, const std::list<int>& path, std::shared_ptr<MessageBody> body)
+        : OverlayMessage(query_num, path.front(), std::move(body)), remaining_path(++path.begin(), path.end()) {}
+    virtual ~PathOverlayMessage() = default;
 
-        //Serialization support
-        std::size_t to_bytes(uint8_t* buffer) const;
-        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& consumer_function) const;
-        std::size_t bytes_size() const;
-        static std::unique_ptr<PathOverlayMessage> from_bytes(mutils::DeserializationManager* m, uint8_t const * buffer);
+    // Serialization support
+    std::size_t to_bytes(uint8_t* buffer) const;
+    void post_object(const std::function<void(uint8_t const* const, std::size_t)>& consumer_function) const;
+    std::size_t bytes_size() const;
+    static std::unique_ptr<PathOverlayMessage> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 
-    protected:
-        /** Default constructor, used only by deserialization.*/
-        PathOverlayMessage() : OverlayMessage() {}
+protected:
+    /** Default constructor, used only by deserialization.*/
+    PathOverlayMessage() : OverlayMessage() {}
 };
 
+std::ostream& operator<<(std::ostream& out, const PathOverlayMessage& message);
 
-std::ostream& operator<< (std::ostream& out, const PathOverlayMessage& message);
-
-}
-}
-
-
+}  // namespace messaging
+}  // namespace adq

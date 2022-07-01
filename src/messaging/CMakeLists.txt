@@ -1,8 +1,9 @@
 add_library(messaging OBJECT
-    AggregationMessage.cpp
+    Message.cpp
     OverlayMessage.cpp
     OverlayTransportMessage.cpp
     PathOverlayMessage.cpp
+    PingMessage.cpp
     QueryRequest.cpp
     SignatureRequest.cpp
     SignatureResponse.cpp)

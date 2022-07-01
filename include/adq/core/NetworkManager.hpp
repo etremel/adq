@@ -147,7 +147,7 @@ public:
      * @param recipient_id The ID of the recipient
      * @return true if the send was successful, false if a connection could not be made.
      */
-    bool send(const std::shared_ptr<messaging::AggregationMessage>& message, const int recipient_id);
+    bool send(const std::shared_ptr<messaging::AggregationMessage<RecordType>>& message, const int recipient_id);
     /**
      * Sends a PingMessage over the network to another meter
      * @param message The message to send

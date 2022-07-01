@@ -33,7 +33,7 @@ struct ValueContribution : public MessageBody {
     virtual ~ValueContribution() = default;
 
     inline bool operator==(const MessageBody& _rhs) const {
-        if(auto* rhs = dynamic_cast<const ValueContribution*>(&_rhs))
+        if(auto* rhs = dynamic_cast<const ValueContribution<RecordType>*>(&_rhs))
             return this->value == rhs->value && this->signature == rhs->signature;
         else
             return false;
@@ -43,7 +43,7 @@ struct ValueContribution : public MessageBody {
     std::size_t to_bytes(uint8_t* buffer) const override;
     void post_object(const std::function<void(uint8_t const* const, std::size_t)>& consumer_function) const override;
     std::size_t bytes_size() const override;
-    static std::unique_ptr<ValueContribution> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
+    static std::unique_ptr<ValueContribution<RecordType>> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 };
 
 template<typename RecordType>
@@ -57,9 +57,9 @@ std::ostream& operator<<(std::ostream& stream, const ValueContribution<RecordTyp
 
 namespace std {
 
-template <>
-struct hash<adq::messaging::ValueContribution> {
-    size_t operator()(const adq::messaging::ValueContribution& input) const {
+template <typename RecordType>
+struct hash<adq::messaging::ValueContribution<RecordType>> {
+    size_t operator()(const adq::messaging::ValueContribution<RecordType>& input) const {
         size_t result = 1;
         adq::util::hash_combine(result, input.signature);
         adq::util::hash_combine(result, input.value);

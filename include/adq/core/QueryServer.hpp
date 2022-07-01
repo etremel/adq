@@ -2,6 +2,7 @@
 #include "InternalTypes.hpp"
 #include "CryptoLibrary.hpp"
 #include "NetworkManager.hpp"
+#include "adq/messaging/AggregationMessage.hpp"
 #include "adq/util/TimerManager.hpp"
 
 #include <spdlog/spdlog.h>
@@ -18,7 +19,7 @@ namespace adq {
 template <typename RecordType>
 class QueryServer {
 public:
-    using QueryCallback = std::function<void(const int, std::shared_ptr<messaging::AggregationMessageValue>)>;
+    using QueryCallback = std::function<void(const int, std::shared_ptr<messaging::AggregationMessageValue<RecordType>>)>;
 
 private:
     std::shared_ptr<spdlog::logger> logger;
@@ -33,9 +34,9 @@ private:
     int query_num;
     bool query_finished;
     std::map<int, QueryCallback> query_callbacks;
-    util::unordered_ptr_multiset<messaging::AggregationMessage> curr_query_results;
+    util::unordered_ptr_multiset<messaging::AggregationMessage<RecordType>> curr_query_results;
     /** All results of queries the utility has issued, indexed by query number. */
-    std::vector<std::shared_ptr<messaging::AggregationMessageValue>> all_query_results;
+    std::vector<std::shared_ptr<messaging::AggregationMessageValue<RecordType>>> all_query_results;
     std::set<int> curr_query_meters_signed;
     //"A priority queue of pointers to QueryRequests, ordered by QueryNumGreater"
     using query_priority_queue = std::priority_queue<
@@ -47,7 +48,7 @@ private:
 
 public:
     /** Handles receiving an AggregationMessage from a meter, which should contain a query result. */
-    void handle_message(const std::shared_ptr<messaging::AggregationMessage>& message);
+    void handle_message(const std::shared_ptr<messaging::AggregationMessage<RecordType>>& message);
 
     /** Handles receiving a SignatureRequest from a meter, by signing the requested value. */
     void handle_message(const std::shared_ptr<messaging::SignatureRequest>& message);
@@ -67,7 +68,7 @@ public:
     bool deregister_query_callback(const int callback_id);
 
     /** Gets the stored result of a query that has completed. */
-    std::shared_ptr<messaging::AggregationMessageValue> get_query_result(const int query_num) { return all_query_results.at(query_num); }
+    std::shared_ptr<messaging::AggregationMessageValue<RecordType>> get_query_result(const int query_num) { return all_query_results.at(query_num); }
 
     /** Starts an infinite loop that listens for incoming messages (i.e.
      * query responses) and reacts to them. This function call never

@@ -11,22 +11,23 @@ namespace adq {
 
 namespace messaging {
 
-template<typename RecordType>
+template <typename RecordType>
 struct ValueTuple {
     int query_num;
     RecordType value;
     std::vector<int> proxies;
     // Member-by-member constructor should do the obvious thing
-    ValueTuple(const int query_num, const std::vector<FixedPoint_t>& value, const std::vector<int>& proxies) : query_num(query_num), value(value), proxies(proxies) {}
+    ValueTuple(const int query_num, const RecordType& value, const std::vector<int>& proxies)
+        : query_num(query_num), value(value), proxies(proxies) {}
 };
 
-template<typename RecordType>
+template <typename RecordType>
 std::ostream& operator<<(std::ostream& stream, const ValueTuple<RecordType>& tuple) {
     return stream << "(" << tuple.query_num << ", " << tuple.value << ", " << tuple.proxies << ")";
 }
 
 // Equality operator should do the obvious thing.
-template<typename RecordType>
+template <typename RecordType>
 bool operator==(const ValueTuple<RecordType>& lhs, const ValueTuple<RecordType>& rhs) {
     return lhs.query_num == rhs.query_num && lhs.value == rhs.value && lhs.proxies == rhs.proxies;
 }

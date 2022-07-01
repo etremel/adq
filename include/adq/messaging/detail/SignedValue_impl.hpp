@@ -5,7 +5,8 @@ namespace adq {
 namespace messaging {
 
 // Voodoo incantations
-// const constexpr MessageBodyType SignedValue::type;
+template<typename RecordType>
+const constexpr MessageBodyType SignedValue<RecordType>::type;
 
 // I don't have time to make this generic for all std::maps
 template <typename RecordType>
@@ -76,7 +77,7 @@ std::unique_ptr<SignedValue<RecordType>> SignedValue<RecordType>::from_bytes(mut
     std::size_t bytes_read = mutils::bytes_size(*contribution);
     std::unique_ptr<std::map<int, SignatureArray>> signatures = from_bytes_map(p, buffer + bytes_read);
     // Fix the pointer type of the ValueContribution
-    std::shared_ptr<ValueContribution> contribution_shared(std::move(contribution));
+    std::shared_ptr<ValueContribution<RecordType> contribution_shared(std::move(contribution));
     return std::make_unique<SignedValue<RecordType>>(contribution_shared, *signatures);
 }
 

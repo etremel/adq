@@ -9,6 +9,7 @@
 
 #include "MessageBody.hpp"
 #include "MessageBodyType.hpp"
+#include "adq/core/InternalTypes.hpp"
 #include "adq/util/Hash.hpp"
 
 #include <memory>
@@ -23,112 +24,125 @@ namespace messaging {
  * OverlayMessage is relayed to another node, it is "wrapped" in a new
  * OverlayTransportMessage.
  */
-class OverlayMessage: public MessageBody {
-    public:
-        static const constexpr MessageBodyType type = MessageBodyType::OVERLAY;
-        int query_num;
-        int destination;
-        bool is_encrypted; //In the simulation, this will be a marker for whether we should pretend this message is encrypted
-        bool flood; //True if this message should be sent out on every round, regardless of destination
-        std::shared_ptr<MessageBody> body;
-        OverlayMessage(const int query_num, const int dest_id, const std::shared_ptr<MessageBody>& body, const bool flood = false) :
-                query_num(query_num), destination(dest_id), is_encrypted(false), flood(flood), body(body) {}
-        virtual ~OverlayMessage() = default;
+class OverlayMessage : public MessageBody {
+public:
+    static const constexpr MessageBodyType type = MessageBodyType::OVERLAY;
+    int query_num;
+    int destination;
+    bool is_encrypted;  // In the simulation, this will be a marker for whether we should pretend this message is encrypted
+    bool flood;         // True if this message should be sent out on every round, regardless of destination
+    std::shared_ptr<MessageBody> body;
+    OverlayMessage(const int query_num, const int dest_id, std::shared_ptr<MessageBody> body, const bool flood = false)
+        : query_num(query_num), destination(dest_id), is_encrypted(false), flood(flood), body(std::move(body)) {}
+    virtual ~OverlayMessage() = default;
 
-        inline bool operator==(const MessageBody& _rhs) const {
-            auto lhs = this;
-            if (auto* rhs = dynamic_cast<const OverlayMessage*>(&_rhs))
-                return lhs->query_num == rhs->query_num
-                        && lhs->destination == rhs->destination
-                        && lhs->is_encrypted == rhs->is_encrypted
-                        && lhs->flood == rhs->flood
-                        && (lhs->body == nullptr ? rhs->body == nullptr :
-                                (rhs->body != nullptr && *lhs->body == *rhs->body));
-            else return false;
-        }
-        /**
-         * Computes the number of bytes it would take to serialize this message.
-         * @return The size of this message when serialized, in bytes.
-         */
-        std::size_t bytes_size() const;
+    inline bool operator==(const MessageBody& _rhs) const {
+        auto lhs = this;
+        if(auto* rhs = dynamic_cast<const OverlayMessage*>(&_rhs))
+            return lhs->query_num == rhs->query_num &&
+                   lhs->destination == rhs->destination &&
+                   lhs->is_encrypted == rhs->is_encrypted &&
+                   lhs->flood == rhs->flood &&
+                   (lhs->body == nullptr ? rhs->body == nullptr
+                                         : (rhs->body != nullptr && *lhs->body == *rhs->body));
+        else
+            return false;
+    }
+    /**
+     * Computes the number of bytes it would take to serialize this message.
+     * @return The size of this message when serialized, in bytes.
+     */
+    std::size_t bytes_size() const;
 
-        /**
-         * Copies an OverlayMessage into the byte buffer that {@code buffer}
-         * points to, blindly assuming that the buffer is large enough to contain the
-         * message. The caller must ensure that the buffer is at least as long as
-         * bytes_size(message) before calling this.
-         * @param buffer The byte buffer into which it should be serialized.
-         * @return The number of bytes written; should be equal to bytes_size()
-         */
-        std::size_t to_bytes(uint8_t* buffer) const;
+    /**
+     * Copies an OverlayMessage into the byte buffer that {@code buffer}
+     * points to, blindly assuming that the buffer is large enough to contain the
+     * message. The caller must ensure that the buffer is at least as long as
+     * bytes_size(message) before calling this.
+     * @param buffer The byte buffer into which it should be serialized.
+     * @return The number of bytes written; should be equal to bytes_size()
+     */
+    std::size_t to_bytes(uint8_t* buffer) const;
 
-        void post_object(const std::function<void (uint8_t const * const,std::size_t)>& consumer_function) const;
+    void post_object(const std::function<void(uint8_t const* const, std::size_t)>& consumer_function) const;
 
+    /**
+     * Creates a new OverlayMessage by deserializing the contents of
+     * {@code buffer}, blindly assuming that the buffer is large enough to contain
+     * the OverlayMessage and its enclosed body (if present).
+     * @param buffer A byte buffer containing the results of an earlier call to
+     * OverlayMessage::to_bytes(uint8_t*).
+     * @return A new OverlayMessage reconstructed from the serialized bytes.
+     */
+    static std::unique_ptr<OverlayMessage> from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer);
 
-        /**
-         * Creates a new OverlayMessage by deserializing the contents of
-         * {@code buffer}, blindly assuming that the buffer is large enough to contain
-         * the OverlayMessage and its enclosed body (if present).
-         * @param buffer A byte buffer containing the results of an earlier call to
-         * OverlayMessage::to_bytes(uint8_t*).
-         * @return A new OverlayMessage reconstructed from the serialized bytes.
-         */
-        static std::unique_ptr<OverlayMessage> from_bytes(mutils::DeserializationManager* p, const uint8_t * buffer);
+protected:
+    /** Default constructor, used only when reconstructing serialized messages */
+    OverlayMessage() : query_num(0), destination(0), is_encrypted(false), flood(false), body(nullptr) {}
+    /**
+     * Helper method for implementing to_bytes; serializes the superclass
+     * fields (from OverlayMessage) into the given buffer. Subclasses can
+     * call this to get OverlayMessage's implementation of to_bytes
+     * *without* getting a MessageBodyType inserted into the buffer.
+     * @param buffer The byte buffer into which OverlayMessage fields should
+     * be serialized.
+     * @return The number of bytes written by this method.
+     */
+    std::size_t to_bytes_common(uint8_t* buffer) const;
 
-    protected:
-        /** Default constructor, used only when reconstructing serialized messages */
-        OverlayMessage() : query_num(0), destination(0), is_encrypted(false), flood(false), body(nullptr) {}
-        /**
-         * Helper method for implementing to_bytes; serializes the superclass
-         * fields (from OverlayMessage) into the given buffer. Subclasses can
-         * call this to get OverlayMessage's implementation of to_bytes
-         * *without* getting a MessageBodyType inserted into the buffer.
-         * @param buffer The byte buffer into which OverlayMessage fields should
-         * be serialized.
-         * @return The number of bytes written by this method.
-         */
-        std::size_t to_bytes_common(uint8_t* buffer) const;
-
-        /**
-         * Helper method for implementing from_bytes; deserializes the superclass
-         * (OverlayMessage) fields from buffer into the corresponding fields of
-         * the provided partially-constructed OverlayMessage object. Assumes
-         * that the pointer to the buffer is already offset to the correct
-         * position at which to start reading OverlayMessage fields. Subclasses
-         * can call this to get OverlayMessgae's implementation of from_bytes
-         * without the overhead of creating an extra copy of the message.
-         * @param partial_overlay_message An OverlayMessage whose fields should
-         * be updated to contain the values in the buffer
-         * @param buffer The byte buffer containing serialized OverlayMessage fields
-         * @return The number of bytes read from the buffer during deserialization.
-         */
-        static std::size_t from_bytes_common(OverlayMessage& partial_overlay_message, const uint8_t * buffer);
-
-
+    /**
+     * Helper method for implementing from_bytes; deserializes the superclass
+     * (OverlayMessage) fields from buffer into the corresponding fields of
+     * the provided partially-constructed OverlayMessage object. Assumes
+     * that the pointer to the buffer is already offset to the correct
+     * position at which to start reading OverlayMessage fields. Subclasses
+     * can call this to get OverlayMessgae's implementation of from_bytes
+     * without the overhead of creating an extra copy of the message.
+     * @param partial_overlay_message An OverlayMessage whose fields should
+     * be updated to contain the values in the buffer
+     * @param buffer The byte buffer containing serialized OverlayMessage fields
+     * @return The number of bytes read from the buffer during deserialization.
+     */
+    static std::size_t from_bytes_common(OverlayMessage& partial_overlay_message, const uint8_t* buffer);
 };
 
-std::ostream& operator<< (std::ostream& out, const OverlayMessage& message);
+std::ostream& operator<<(std::ostream& out, const OverlayMessage& message);
 
+/**
+ * Constructs an OverlayMessage that will carry a payload (body) along a specific
+ * path. It will be successively encrypted with the public keys of each node in
+ * the path, so that it must be decrypted by each node in order before it can be
+ * read.
+ *
+ * @param path The sequence of node IDs that the OverlayMessage will pass through
+ * @param payload The message body that should be contained in the innermost layer
+ * of encryption
+ * @param query_num The query number (epoch) in which this message is being sent
+ * @param crypto_library The cryptography library that should be used to encrypt
+ * the message
+ * @return A new encrypted OverlayMessage
+ */
+std::shared_ptr<OverlayMessage> build_encrypted_onion(const std::list<int>& path, std::shared_ptr<MessageBody> payload,
+                                                      const int query_num, CryptoLibrary& crypto_library);
 
 } /* namespace messaging */
-} /* namespace psm */
-
+}  // namespace adq
 
 namespace std {
 
-template<>
+template <>
 struct hash<adq::messaging::OverlayMessage> {
-        size_t operator()(const adq::messaging::OverlayMessage& input) const {
-            using adq::util::hash_combine;
+    size_t operator()(const adq::messaging::OverlayMessage& input) const {
+        using adq::util::hash_combine;
 
-            size_t result = 1;
-            hash_combine(result, input.query_num);
-            hash_combine(result, input.destination);
-            hash_combine(result, input.is_encrypted);
-            hash_combine(result, input.flood);
-            hash_combine(result, input.body);
-            return result;
-        }
+        size_t result = 1;
+        hash_combine(result, input.query_num);
+        hash_combine(result, input.destination);
+        hash_combine(result, input.is_encrypted);
+        hash_combine(result, input.flood);
+        hash_combine(result, input.body);
+        return result;
+    }
 };
 
 }  // namespace std

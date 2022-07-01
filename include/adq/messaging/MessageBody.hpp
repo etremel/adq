@@ -2,6 +2,9 @@
 
 #include "adq/mutils-serialization/SerializationSupport.hpp"
 
+#include <cstdint>
+#include <memory>
+
 namespace adq {
 
 namespace messaging {
@@ -13,19 +16,16 @@ namespace messaging {
  * dispatch to the correct subclass's version of from_bytes.
  */
 class MessageBody : public mutils::ByteRepresentable {
-    public:
-        virtual ~MessageBody() = default;
-        virtual bool operator==(const MessageBody&) const = 0;
+public:
+    virtual ~MessageBody() = default;
+    virtual bool operator==(const MessageBody&) const = 0;
 
-        static std::unique_ptr<MessageBody> from_bytes(mutils::DeserializationManager* m, uint8_t const * buffer);
+    static std::unique_ptr<MessageBody> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 };
 
-inline bool operator!=(const MessageBody& a, const MessageBody& b){
+inline bool operator!=(const MessageBody& a, const MessageBody& b) {
     return !(a == b);
 }
 
 } /* namespace messaging */
 } /* namespace adq */
-
-
-
