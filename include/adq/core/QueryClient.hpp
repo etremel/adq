@@ -1,9 +1,10 @@
 #pragma once
 
-#include "adq/core/DataSource.hpp"
-#include "adq/core/InternalTypes.hpp"
-#include "adq/core/NetworkManager.hpp"
-#include "adq/core/ProtocolState.hpp"
+#include "DataSource.hpp"
+#include "InternalTypes.hpp"
+#include "MessageConsumer.hpp"
+#include "NetworkManager.hpp"
+#include "ProtocolState.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -21,7 +22,7 @@ namespace adq {
  * will read collections of this data type.
  */
 template <typename RecordType>
-class QueryClient {
+class QueryClient : public MessageConsumer<RecordType> {
 public:
     /** The ID of this client device in the query network. */
     const int my_id;
@@ -65,42 +66,45 @@ public:
                 const std::map<int, std::string>& public_key_files_by_id,
                 std::unique_ptr<DataSource<RecordType>> data_source);
 
+    virtual ~QueryClient() = default;
+
     /**
      * Handles an overlay message received from another client or the utility.
      * This is a callback for NetworkManager to invoke when a message arrives.
      * The QueryClient shares ownership of the message, so it will stay alive
      * until QueryClient is done handling it.
      */
-    void handle_message(std::shared_ptr<messaging::OverlayTransportMessage> message);
+    virtual void handle_message(std::shared_ptr<messaging::OverlayTransportMessage> message) override;
     /**
      * Handles an aggregation message received from another client. This is a
      * callback for NetworkManager to invoke when a message arrives.
      */
-    void handle_message(std::shared_ptr<messaging::AggregationMessage<RecordType>> message);
+    virtual void handle_message(std::shared_ptr<messaging::AggregationMessage<RecordType>> message) override;
     /**
      * Handles a ping message received from another client. This is a callback
      * for NetworkManager to invoke when the message arrives.
      */
-    void handle_message(std::shared_ptr<messaging::PingMessage> message);
+    virtual void handle_message(std::shared_ptr<messaging::PingMessage> message) override;
     /**
      * Starts the data collection protocol. This is a callback for NetworkManager
      * to invoke when a message arrives.
      * @param message The query request message received from the utility
      */
-    void handle_message(std::shared_ptr<messaging::QueryRequest> message);
+    virtual void handle_message(std::shared_ptr<messaging::QueryRequest> message) override;
     /**
      * Handles a signature-response message received from the utility. This is
      * a callback for NetworkManager to invoke when the message arrives.
      */
-    void handle_message(std::shared_ptr<messaging::SignatureResponse> message);
+    virtual void handle_message(std::shared_ptr<messaging::SignatureResponse> message) override;
+    /**
+     * Handler for signature-request messages; they are ignored since only the
+     * query server should receive signature-request messages.
+     */
+    virtual void handle_message(std::shared_ptr<messaging::SignatureRequest> message) override;
 
     /** Starts the client, which will continuously wait for messages and
      * respond to them as they arrive. This function call never returns. */
     void main_loop();
-
-    /** Shuts down the message-listening loop to allow the client to exit cleanly.
-     * Obviously, this must be called from a separate thread from main_loop(). */
-    void shut_down();
 
     int get_num_clients() const { return num_clients; }
 };

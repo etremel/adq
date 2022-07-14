@@ -23,7 +23,8 @@ QueryClient<RecordType>::QueryClient(int id,
                                      const std::string& private_key_filename,
                                      const std::map<int, std::string>& public_key_files_by_id,
                                      std::unique_ptr<DataSource<RecordType>> data_source)
-    : my_id(id),
+    : logger(spdlog::get("global_logger")),
+      my_id(id),
       num_clients(num_clients),
       network_manager(*this, service_port, client_id_to_ip_map),
       query_protocol_state(num_clients, id, network_manager, private_key_filename, public_key_files_by_id),
@@ -84,6 +85,11 @@ void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::Aggregat
 template <typename RecordType>
 void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::SignatureResponse> message) {
     query_protocol_state.handle_signature_response(message);
+}
+
+template <typename RecordType>
+void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::SignatureRequest> message) {
+    logger->warn("Client {} received a signature request message, which can only be handled by a server. Ignoring it.", my_id);
 }
 
 template <typename RecordType>

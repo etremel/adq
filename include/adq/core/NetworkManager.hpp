@@ -1,6 +1,7 @@
 #pragma once
 
-#include "adq/core/InternalTypes.hpp"
+#include "InternalTypes.hpp"
+#include "MessageConsumer.hpp"
 
 #include <spdlog/spdlog.h>
 #include <asio.hpp>
@@ -15,8 +16,14 @@ private:
     std::shared_ptr<spdlog::logger> logger;
     /** The io_context that all the sockets will use */
     asio::io_context network_io_context;
-    /** The QueryClient that owns this NetworkManager */
-    QueryClient<RecordType>& query_client;
+
+    /**
+     * The application-level object that owns this NetworkManager and will
+     * handle all the messages once they are deserialized. This is either a
+     * QueryClient or QueryServer.
+     */
+    MessageConsumer<RecordType>* message_handler;
+
     /** Maps client IDs to address/port pairs. */
     std::map<int, asio::ip::tcp::endpoint> id_to_ip_map;
     /** Maps address/port pairs to client IDs */
@@ -112,17 +119,23 @@ private:
 
 public:
     /**
-     * Constructs a NetworkManager that is owned by a QueryClient object and
-     * listens for connections on a particular port.
+     * Constructs a NetworkManager that is owned by a QueryClient or QueryServer
+     * object and listens for connections on a particular port.
      *
-     * @param owning_client A reference to the QueryClient object that created
-     * this NetworkManager; used to deliver received messages back to the QueryClient
+     * @param owning_client A pointer to the QueryClient or QueryServer object
+     * that created this NetworkManager; used to deliver received messages back
+     * to the application
      * @param service_port The port that the NetworkManager should listen on for
      * incoming connections.
      * @param client_id_to_ip_map The QueryClient's map from client IDs to IP addresses
      */
-    NetworkManager(QueryClient<RecordType>& owning_client, uint16_t service_port,
+    NetworkManager(MessageConsumer<RecordType>* owning_client, uint16_t service_port,
                    const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map);
+
+    /**
+     * Destructor: Calls shutdown() so that no more network events are handled if the NetworkManager is destroyed
+     */
+    ~NetworkManager();
 
     /**
      * Starts waiting for network events by giving control of the calling
@@ -130,6 +143,12 @@ public:
      * to block forever.
      */
     void run();
+
+    /**
+     * Shuts down the network manager by stopping the ASIO io_context. Calling
+     * this will unblock the thread that called run().
+     */
+    void shutdown();
 
     /**
      * Sends a stream of overlay messages over the network to another meter,

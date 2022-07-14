@@ -1,23 +1,28 @@
+#pragma once
 
-#include "InternalTypes.hpp"
 #include "CryptoLibrary.hpp"
+#include "InternalTypes.hpp"
+#include "MessageConsumer.hpp"
 #include "NetworkManager.hpp"
 #include "adq/messaging/AggregationMessage.hpp"
+#include "adq/util/PointerUtil.hpp"
 #include "adq/util/TimerManager.hpp"
 
 #include <spdlog/spdlog.h>
 
+#include <functional>
+#include <list>
 #include <map>
 #include <memory>
 #include <queue>
-#include <vector>
-#include <list>
 #include <set>
+#include <string>
+#include <vector>
 
 namespace adq {
 
 template <typename RecordType>
-class QueryServer {
+class QueryServer : public MessageConsumer<RecordType> {
 public:
     using QueryCallback = std::function<void(const int, std::shared_ptr<messaging::AggregationMessageValue<RecordType>>)>;
 
@@ -44,24 +49,60 @@ private:
         std::vector<std::shared_ptr<messaging::QueryRequest>>,
         util::ptr_comparator<messaging::QueryRequest, messaging::QueryNumGreater>>;
     query_priority_queue pending_batch_queries;
+
     static int compute_timeout_time(const int num_meters);
 
+    void end_query();
+
 public:
+    QueryServer(int num_clients,
+                uint16_t service_port,
+                const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map,
+                const std::string& private_key_filename,
+                const std::map<int, std::string>& public_key_files_by_id);
+
+    virtual ~QueryServer();
+
     /** Handles receiving an AggregationMessage from a meter, which should contain a query result. */
-    void handle_message(const std::shared_ptr<messaging::AggregationMessage<RecordType>>& message);
+    virtual void handle_message(std::shared_ptr<messaging::AggregationMessage<RecordType>> message) override;
 
     /** Handles receiving a SignatureRequest from a meter, by signing the requested value. */
-    void handle_message(const std::shared_ptr<messaging::SignatureRequest>& message);
+    virtual void handle_message(std::shared_ptr<messaging::SignatureRequest> message) override;
 
-    /** Starts a query by broadcasting a message from the utility to all the meters in the network.
+    // Handlers for other messages that a server should not normally receive. These will print a warning and drop the message.
+
+    virtual void handle_message(std::shared_ptr<messaging::OverlayTransportMessage> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::PingMessage> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::QueryRequest> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::SignatureResponse> message) override;
+
+    /**
+     * Starts a query by broadcasting a message from the utility to all the meters in the network.
      * Do not call this while an existing query is still in progress, or the existing query's
-     * results will be lost. */
-    void start_query(const std::shared_ptr<messaging::QueryRequest>& query);
+     * results will be lost.
+     */
+    void start_query(std::shared_ptr<messaging::QueryRequest> query);
 
-    /** Starts a batch of queries that should be executed in sequence as quickly as possible */
+    /**
+     * Starts a batch of queries that should be executed in sequence as quickly as possible.
+     * This starts the first query in the batch immediately (defined as the one with
+     * the lowest query number), but the next one will not start running until the
+     * first one completes.
+     * @param queries A batch of queries. The order of this vector will be ignored
+     * and the queries will be run in order of query number.
+     */
     void start_queries(const std::list<std::shared_ptr<messaging::QueryRequest>>& queries);
 
-    /** Registers a callback function that should be run each time a query completes. */
+    /**
+     * Registers a callback function that should be run each time a query completes.
+     * This allows other components running at the utility to be notified when a
+     * query they sent using this UtilityClient (e.g. through start_query) has
+     * completed.
+     * @param callback A function that will be called every time a query completes.
+     * Its arguments will be the query number and the result of that query (an
+     * AggregationMessageValue containing the final aggregate).
+     * @return A numeric ID that can be used to refer to this callback later.
+     */
     int register_query_callback(const QueryCallback& callback);
 
     /** Deregisters a callback function previously registered, using its ID. */
@@ -84,3 +125,5 @@ public:
     static constexpr int NETWORK_ROUNDTRIP_TIMEOUT = 100;
 };
 }  // namespace adq
+
+#include "detail/QueryServer_impl.hpp"

@@ -65,7 +65,6 @@ std::unique_ptr<SimSmartMeter> generate_meter(std::discrete_distribution<>& inco
 int main(int argc, char** argv) {
     using namespace smart_meters;
 
-
     if(argc < 11) {
         std::cout << "Expected arguments: <my ID> <utility IP address> <utility public key file> "
                   << "<meter IP configuration file> <public key folder> <private key folder> <device configuration files> " << std::endl;

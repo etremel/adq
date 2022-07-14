@@ -115,6 +115,12 @@ public:
         MEASURE_DAILY_CONSUMPTION = 2,
         SIMULATE_PROJECTED_USAGE = 3
     };
+    enum FilterFunctions : adq::Opcode {
+        NO_FILTER = 0
+    };
+    enum AggregateFunctions : adq::Opcode {
+        SUM_VECTORS = 0
+    };
     SimSmartMeter(const IncomeLevel& income_level, std::list<Device>& owned_devices);
     ~SimSmartMeter();
     adq::FixedPoint_t measure_consumption(const int window_minutes) const;

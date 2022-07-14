@@ -21,6 +21,8 @@ constexpr int TOTAL_TIMESTEPS = 144;
 const int PERCENT_POOR_HOMES = 25;
 const int PERCENT_RICH_HOMES = 25;
 
+const int NUM_QUERIES = 3;
+
 const auto TIME_PER_TIMESTEP = std::chrono::seconds(10);
 
 }

@@ -52,10 +52,21 @@ SimSmartMeter::SimSmartMeter(const IncomeLevel& income_level, std::list<Device>&
         return simulate_projected_usage(window_minutes);
     };
 
-    // Filter function zero is "no filter"
-    filter_functions[0] = [](const std::vector<adq::FixedPoint_t>& record, const uint8_t* const serialized_args) {
+    filter_functions[NO_FILTER] = [](const std::vector<adq::FixedPoint_t>& record, const uint8_t* const serialized_args) {
         return true;
     };
+
+    // This simple aggregation function assumes that every individual vector in the "records" list is the same size
+    aggregate_functions[SUM_VECTORS] = [](const std::vector<std::vector<adq::FixedPoint_t>>& records, const uint8_t* const serialized_args) {
+        std::vector<adq::FixedPoint_t> sum_vector(records[0].size());
+        for(const auto& record_vector : records) {
+            for(int i = 0; i < record_vector.size(); ++i) {
+                sum_vector[i] += record_vector[i];
+            }
+        }
+        return sum_vector;
+    };
+
 }
 
 SimSmartMeter::~SimSmartMeter() {

@@ -24,7 +24,7 @@ public:
     const std::vector<uint8_t> filter_serialized_args;
     const std::vector<uint8_t> aggregate_serialized_args;
 
-    QueryRequest( const int query_number, const Opcode select_function, const Opcode filter_function,
+    QueryRequest(const int query_number, const Opcode select_function, const Opcode filter_function,
                  const Opcode aggregate_function, const std::vector<uint8_t>& select_serialized_args,
                  const std::vector<uint8_t>& filter_serialized_args, const std::vector<uint8_t>& aggregate_serialized_args)
         : Message(UTILITY_NODE_ID, nullptr),  // hack, these fields should really be the body of the message. Would it hurt to make a QueryRequestMessageBody?
