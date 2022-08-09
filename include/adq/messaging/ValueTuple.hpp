@@ -1,6 +1,8 @@
 #pragma once
 
 #include "adq/core/InternalTypes.hpp"
+#include "adq/mutils-serialization/SerializationMacros.hpp"
+#include "adq/mutils-serialization/SerializationSupport.hpp"
 #include "adq/util/Hash.hpp"
 #include "adq/util/OStreams.hpp"
 
@@ -12,13 +14,15 @@ namespace adq {
 namespace messaging {
 
 template <typename RecordType>
-struct ValueTuple {
+struct ValueTuple : public mutils::ByteRepresentable {
     int query_num;
     RecordType value;
     std::vector<int> proxies;
     // Member-by-member constructor should do the obvious thing
     ValueTuple(const int query_num, const RecordType& value, const std::vector<int>& proxies)
         : query_num(query_num), value(value), proxies(proxies) {}
+
+    DEFAULT_SERIALIZATION_SUPPORT(ValueTuple, query_num, value, proxies);
 };
 
 template <typename RecordType>

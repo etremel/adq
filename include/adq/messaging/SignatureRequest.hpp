@@ -2,7 +2,7 @@
 
 #include "Message.hpp"
 #include "MessageType.hpp"
-#include "StringBody.hpp"
+#include "ByteBody.hpp"
 
 #include <cstdint>
 #include <cstring>
@@ -15,8 +15,8 @@ namespace messaging {
 class SignatureRequest : public Message {
 public:
     static const constexpr MessageType type = MessageType::SIGNATURE_REQUEST;
-    using body_type = StringBody;
-    SignatureRequest(const int sender_id, std::shared_ptr<StringBody> encrypted_value)
+    using body_type = ByteBody;
+    SignatureRequest(const int sender_id, std::shared_ptr<ByteBody> encrypted_value)
         : Message(sender_id, std::move(encrypted_value)) {}
     virtual ~SignatureRequest() = default;
 
@@ -42,9 +42,7 @@ public:
         int sender_id;
         std::memcpy(&sender_id, buffer + bytes_read, sizeof(sender_id));
         bytes_read += sizeof(sender_id);
-        std::unique_ptr<body_type> body = mutils::from_bytes<body_type>(m, buffer + bytes_read);
-        // Whack the pointer type into the one SignatureRequest expects
-        auto body_shared = std::shared_ptr<body_type>(std::move(body));
+        std::shared_ptr<body_type> body_shared = mutils::from_bytes<body_type>(m, buffer + bytes_read);
         return std::make_unique<SignatureRequest>(sender_id, body_shared);
     }
 };

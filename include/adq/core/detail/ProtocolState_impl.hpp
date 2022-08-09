@@ -14,6 +14,7 @@
 #include "adq/messaging/ValueContribution.hpp"
 #include "adq/messaging/ValueTuple.hpp"
 #include "adq/util/LinuxTimerManager.hpp"
+#include "adq/util/PathFinder.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -41,7 +42,7 @@ ProtocolState<RecordType>::ProtocolState(int num_clients, int local_client_id, N
       agreement_start_round(0) {}
 
 template <typename RecordType>
-void ProtocolState<RecordType>::start_query(const messaging::QueryRequest& query_request, const RecordType& contributed_data) {
+void ProtocolState<RecordType>::start_query(std::shared_ptr<messaging::QueryRequest> query_request, const RecordType& contributed_data) {
     overlay_round = -1;
     is_last_round = false;
     ping_response_from_predecessor = false;
@@ -52,21 +53,22 @@ void ProtocolState<RecordType>::start_query(const messaging::QueryRequest& query
                                                                                  network, query_request);
     std::vector<int> proxies = util::pick_proxies(meter_id, num_aggregation_groups, num_meters);
     logger->trace("Client {} chose these proxies: {}", meter_id, proxies);
-    my_contribution = std::make_shared<messaging::ValueTuple<RecordType>>(query_request.query_number, contributed_data, proxies);
+    my_contribution = std::make_shared<messaging::ValueTuple<RecordType>>(query_request->query_number, contributed_data, proxies);
 
     protocol_phase = ProtocolPhase::SETUP;
     accepted_proxy_values.clear();
-    agreement_phase_state = std::make_unique<CrusaderAgreementState<RecordType>>(meter_id, num_meters, query_request.query_number, crypto);
+    agreement_phase_state = std::make_unique<CrusaderAgreementState<RecordType>>(meter_id, num_meters, query_request->query_number, crypto);
     // Blind my ValueTuple and send it to the utility to be signed
-    auto blinded_contribution = crypto.rsa_blind(my_contribution);
+    auto blinded_contribution = crypto.rsa_blind(*my_contribution);
     network.send(std::make_shared<messaging::SignatureRequest>(meter_id, blinded_contribution));
 }
 
 template <typename RecordType>
 void ProtocolState<RecordType>::handle_signature_response(messaging::SignatureResponse& message) {
-    auto signed_contribution = std::make_shared<ValueContribution<RecordType>>(*my_contribution);
+    auto signed_contribution = std::make_shared<messaging::ValueContribution<RecordType>>(*my_contribution);
     // Decrypt the utility's signature and copy it into ValueContribution's signature field
-    crypto.rsa_unblind_signature(as_string_pointer(std::static_pointer_cast<SignatureResponse::body_type>(message.body)),
+    crypto.rsa_unblind_signature(*my_contribution,
+                                 *std::static_pointer_cast<messaging::SignatureResponse::body_type>(message.body),
                                  signed_contribution->signature);
 
     logger->debug("Client {} is finished with Setup", meter_id);
@@ -79,7 +81,7 @@ void ProtocolState<RecordType>::handle_ping_message(const messaging::PingMessage
     if(!message.is_response) {
         // If this is a ping request, send a response back
         auto reply = std::make_shared<messaging::PingMessage>(meter_id, true);
-        logger->trace("Meter {} replying to a ping from {}", meter_id, message->sender_id);
+        logger->trace("Meter {} replying to a ping from {}", meter_id, message.sender_id);
         network.send(reply, message.sender_id);
     } else if(message.sender_id == util::gossip_predecessor(meter_id, overlay_round, num_meters)) {
         // If this is a ping response and we still care about it
@@ -135,10 +137,10 @@ void ProtocolState<RecordType>::handle_overlay_message(messaging::OverlayTranspo
 template <typename RecordType>
 void ProtocolState<RecordType>::handle_shuffle_phase_message(const messaging::OverlayMessage& message) {
     // Drop messages that are received in the wrong phase (i.e. not ValueContributions) or have the wrong round number
-    if(auto contribution = std::dynamic_pointer_cast<ValueContribution<RecordType>>(message.body)) {
+    if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution<RecordType>>(message.body)) {
         if(contribution->value.query_num == my_contribution->query_num) {
             // Verify the owner's signature
-            if(crypto.rsa_verify(contribution->value, contribution->signature, -1)) {
+            if(crypto.rsa_verify(contribution->value, contribution->signature)) {
                 proxy_values.emplace(contribution);
                 logger->trace("Meter {} received proxy value: {}", meter_id, *contribution);
             }
@@ -207,7 +209,7 @@ void ProtocolState<RecordType>::end_overlay_round() {
         // Sign each received value and multicast it to the other proxies
         for(const auto& proxy_value : proxy_values) {
             // Create a SignedValue object to hold this value, and add this node's signature to it
-            auto signed_value = std::make_shared<messaging::SignedValue>();
+            auto signed_value = std::make_shared<messaging::SignedValue<RecordType>>();
             signed_value->value = proxy_value;
             signed_value->signatures[meter_id].fill(0);
             crypto.rsa_sign(*proxy_value, signed_value->signatures[meter_id]);
@@ -219,9 +221,10 @@ void ProtocolState<RecordType>::end_overlay_round() {
             auto proxy_paths = util::find_paths(meter_id, other_proxies, num_meters, overlay_round + 1);
             for(const auto& proxy_path : proxy_paths) {
                 // Encrypt with the destination's public key, but don't make an onion
-                outgoing_messages.emplace_back(crypto.rsa_encrypt(std::make_shared<messaging::PathOverlayMessage>(
-                                                                      get_current_query_num(), proxy_path, signed_value),
-                                                                  proxy_path.back()));
+                auto path_message = std::make_shared<messaging::PathOverlayMessage>(
+                    get_current_query_num(), proxy_path, signed_value);
+                crypto.rsa_encrypt(*path_message, proxy_path.back());
+                outgoing_messages.emplace_back(path_message);
             }
         }
         agreement_start_round = overlay_round;

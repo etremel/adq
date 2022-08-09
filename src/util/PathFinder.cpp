@@ -5,8 +5,8 @@
  *      Author: edward
  */
 
-#include "util/PathFinder.hpp"
-#include "Overlay.hpp"
+#include "adq/util/PathFinder.hpp"
+#include "adq/util/Overlay.hpp"
 
 #include <algorithm>
 #include <functional>

@@ -22,10 +22,10 @@ struct AgreementValue : public MessageBody {
     /** The signature over the entire SignedValue of a node that accepted the value. */
     SignatureArray accepter_signature;
 
-    AgreementValue(const SignedValue& signed_value, const int accepter_id)
+    AgreementValue(const SignedValue<RecordType>& signed_value, const int accepter_id)
         : signed_value(signed_value), accepter_id(accepter_id) {}
     // Member-by-member constructor used only by serialization
-    AgreementValue(const SignedValue& signed_value, const int accepter_id, const SignatureArray& signature)
+    AgreementValue(const SignedValue<RecordType>& signed_value, const int accepter_id, const SignatureArray& signature)
         : signed_value(signed_value), accepter_id(accepter_id), accepter_signature(signature) {}
     virtual ~AgreementValue() = default;
     inline bool operator==(const MessageBody& _rhs) const {

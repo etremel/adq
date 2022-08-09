@@ -7,7 +7,7 @@ endif()
 
 project(adq
     VERSION 1.0.0
-    LANGUAGES CXX)
+    LANGUAGES C CXX)
 
     include(GNUInstallDirs)
 

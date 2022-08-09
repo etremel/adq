@@ -23,18 +23,18 @@ QueryClient<RecordType>::QueryClient(int id,
                                      const std::string& private_key_filename,
                                      const std::map<int, std::string>& public_key_files_by_id,
                                      std::unique_ptr<DataSource<RecordType>> data_source)
-    : logger(spdlog::get("global_logger")),
-      my_id(id),
+    : my_id(id),
       num_clients(num_clients),
-      network_manager(*this, service_port, client_id_to_ip_map),
+      logger(spdlog::get("global_logger")),
+      network_manager(this, service_port, client_id_to_ip_map),
       query_protocol_state(num_clients, id, network_manager, private_key_filename, public_key_files_by_id),
       data_source(std::move(data_source)) {}
 
 template <typename RecordType>
 void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::QueryRequest> message) {
     // Forward the serialized function call to the DataSource object
-    RecordType data_to_contribute = data_source->select_functions.at(message->select_function_opcode)(message->select_serialized_args);
-    bool should_contribute = data_source->filter_functions.at(message->filter_function_opcode)(data_to_contribute, message->filter_serialized_args);
+    RecordType data_to_contribute = data_source->select_functions.at(message->select_function_opcode)(message->select_serialized_args.data());
+    bool should_contribute = data_source->filter_functions.at(message->filter_function_opcode)(data_to_contribute, message->filter_serialized_args.data());
     if(should_contribute) {
         query_protocol_state.start_query(message, data_to_contribute);
     }
@@ -42,7 +42,7 @@ void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::QueryReq
 
 template <typename RecordType>
 void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::PingMessage> message) {
-    query_protocol_state.handle_ping_message(message);
+    query_protocol_state.handle_ping_message(*message);
 }
 
 template <typename RecordType>
@@ -56,7 +56,7 @@ void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::OverlayT
             logger->warn("Client {} discarded an obsolete message from client {} for an old query: {}", my_id, message->sender_id, *message);
             // At this point, we know the message is for the current query
         } else if(message->sender_round == query_protocol_state.get_current_overlay_round()) {
-            query_protocol_state.handle_overlay_message(message);
+            query_protocol_state.handle_overlay_message(*message);
         } else if(message->sender_round > query_protocol_state.get_current_overlay_round()) {
             // If it's a message for a future round, buffer it until my round advances
             query_protocol_state.buffer_future_message(message);
@@ -73,7 +73,7 @@ void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::Aggregat
     if(util::aggregation_group_for(message->sender_id, query_protocol_state.get_num_aggregation_groups(), num_clients) ==
        util::aggregation_group_for(my_id, query_protocol_state.get_num_aggregation_groups(), num_clients)) {
         if(query_protocol_state.is_in_aggregate_phase()) {
-            query_protocol_state.handle_aggregation_message(message);
+            query_protocol_state.handle_aggregation_message(*message);
             // If it's a message for the right query, but I received it too early, buffer it for the future
         } else if(message->query_num == query_protocol_state.get_current_query_num()) {
             query_protocol_state.buffer_future_message(message);
@@ -84,7 +84,7 @@ void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::Aggregat
 }
 template <typename RecordType>
 void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::SignatureResponse> message) {
-    query_protocol_state.handle_signature_response(message);
+    query_protocol_state.handle_signature_response(*message);
 }
 
 template <typename RecordType>

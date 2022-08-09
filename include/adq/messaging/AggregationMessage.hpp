@@ -33,23 +33,28 @@ public:
     operator std::vector<RecordType>() const { return data; }
     operator std::vector<RecordType>&() { return data; }
     // Boilerplate copy-and-pasting of the entire interface of std::vector follows
-    decltype(data)::size_type size() const noexcept { return data.size(); }
+    using size_type = typename decltype(data)::size_type;
+    using iterator = typename decltype(data)::iterator;
+    using const_iterator = typename decltype(data)::const_iterator;
+    using reference = typename decltype(data)::reference;
+    using const_reference = typename decltype(data)::const_reference;
+    size_type size() const noexcept { return data.size(); }
     template <typename... A>
     void resize(A&&... args) { return data.resize(std::forward<A>(args)...); }
     template <typename... A>
     void emplace_back(A&&... args) { return data.emplace_back(std::forward<A>(args)...); }
-    decltype(data)::iterator begin() { return data.begin(); }
-    decltype(data)::const_iterator begin() const { return data.begin(); }
-    decltype(data)::iterator end() { return data.end(); }
-    decltype(data)::const_iterator end() const { return data.end(); }
-    decltype(data)::const_iterator cbegin() const { return data.cbegin(); }
-    decltype(data)::const_iterator cend() const { return data.cend(); }
+    iterator begin() { return data.begin(); }
+    const_iterator begin() const { return data.begin(); }
+    iterator end() { return data.end(); }
+    const_iterator end() const { return data.end(); }
+    const_iterator cbegin() const { return data.cbegin(); }
+    const_iterator cend() const { return data.cend(); }
     bool empty() const noexcept { return data.empty(); }
     void clear() noexcept { data.clear(); }
-    decltype(data)::reference at(decltype(data)::size_type i) { return data.at(i); }
-    decltype(data)::const_reference at(decltype(data)::size_type i) const { return data.at(i); }
-    decltype(data)::reference operator[](decltype(data)::size_type i) { return data[i]; }
-    decltype(data)::const_reference operator[](decltype(data)::size_type i) const { return data[i]; }
+    reference at(size_type i) { return data.at(i); }
+    const_reference at(size_type i) const { return data.at(i); }
+    reference operator[](size_type i) { return data[i]; }
+    const_reference operator[](size_type i) const { return data[i]; }
     template <typename A>
     AggregationMessageValue<RecordType>& operator=(A&& other) {
         data.operator=(std::forward<A>(other));
@@ -105,7 +110,7 @@ public:
     using body_type = AggregationMessageValue<RecordType>;
     int query_num;
     AggregationMessage() : Message(0, nullptr), num_contributors(0), query_num(0) {}
-    AggregationMessage(const int sender_id, const int query_num, std::shared_ptr<AggregationMessageValue> value)
+    AggregationMessage(const int sender_id, const int query_num, std::shared_ptr<AggregationMessageValue<RecordType>> value)
         : Message(sender_id, value), num_contributors(1), query_num(query_num) {}
     virtual ~AggregationMessage() = default;
     std::shared_ptr<body_type> get_body() { return std::static_pointer_cast<body_type>(body); };
@@ -119,7 +124,9 @@ public:
     void post_object(const std::function<void(uint8_t const* const, std::size_t)>&) const;
     static std::unique_ptr<AggregationMessage> from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer);
 
-    friend bool operator==(const AggregationMessage& lhs, const AggregationMessage& rhs);
+    friend bool operator==(const AggregationMessage& lhs, const AggregationMessage& rhs) {
+        return lhs.num_contributors == rhs.num_contributors && lhs.query_num == rhs.query_num && (*lhs.body) == (*rhs.body);
+    }
     friend struct std::hash<AggregationMessage>;
 
 private:

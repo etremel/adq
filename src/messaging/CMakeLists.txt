@@ -1,4 +1,5 @@
 add_library(messaging OBJECT
+    ByteBody.cpp
     Message.cpp
     OverlayMessage.cpp
     OverlayTransportMessage.cpp

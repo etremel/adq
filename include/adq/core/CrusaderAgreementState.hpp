@@ -37,7 +37,7 @@ private:
     //pointer because this map doesn't own them. This mess is the result.
     std::unordered_map<
         std::shared_ptr<messaging::ValueContribution<RecordType>>,
-        messaging::SignedValue,
+        messaging::SignedValue<RecordType>,
         util::ptr_hash<messaging::ValueContribution<RecordType>>,
         util::ptr_equal<messaging::ValueContribution<RecordType>>>
         signed_proxy_values;

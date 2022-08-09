@@ -1,15 +1,15 @@
 #pragma once
 
-#include <adq/util/Hash.hpp>
+#include "MessageBody.hpp"
+#include "MessageBodyType.hpp"
+#include "ValueTuple.hpp"
+#include "adq/util/Hash.hpp"
+
 #include <cstdint>
 #include <cstring>
 #include <ostream>
 #include <tuple>
 #include <vector>
-
-#include "MessageBody.hpp"
-#include "MessageBodyType.hpp"
-#include "ValueTuple.hpp"
 
 namespace adq {
 
@@ -21,7 +21,7 @@ namespace messaging {
  * Represents a signed (round, value, proxies) tuple that can be contributed to
  * an aggregation query.
  */
-template<typename RecordType>
+template <typename RecordType>
 struct ValueContribution : public MessageBody {
     static const constexpr MessageBodyType type = MessageBodyType::VALUE_CONTRIBUTION;
     ValueTuple<RecordType> value;
@@ -39,14 +39,14 @@ struct ValueContribution : public MessageBody {
             return false;
     }
 
-    //Serialization support
+    // Serialization support
     std::size_t to_bytes(uint8_t* buffer) const override;
     void post_object(const std::function<void(uint8_t const* const, std::size_t)>& consumer_function) const override;
     std::size_t bytes_size() const override;
     static std::unique_ptr<ValueContribution<RecordType>> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 };
 
-template<typename RecordType>
+template <typename RecordType>
 std::ostream& operator<<(std::ostream& stream, const ValueContribution<RecordType>& vc) {
     return stream << "{ValueContribution: " << vc.value << "}";
 }

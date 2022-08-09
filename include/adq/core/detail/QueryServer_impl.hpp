@@ -8,10 +8,11 @@
 #include "adq/messaging/AggregationMessage.hpp"
 #include "adq/messaging/QueryRequest.hpp"
 #include "adq/messaging/SignatureRequest.hpp"
+#include "adq/messaging/SignatureResponse.hpp"
 #include "adq/util/LinuxTimerManager.hpp"
 
-#include <spdlog/spdlog.h>
 #include <spdlog/fmt/ostr.h>
+#include <spdlog/spdlog.h>
 
 #include <cmath>
 
@@ -27,7 +28,13 @@ QueryServer<RecordType>::QueryServer(int num_clients,
       num_meters(num_clients),
       network(this, service_port, client_id_to_ip_map),
       crypto_library(private_key_filename, public_key_files_by_id),
-      timer_library(std::make_unique<util::LinuxTimerManager>()) {}
+      timer_library(std::make_unique<util::LinuxTimerManager>()),
+      query_timeout_time(compute_timeout_time(num_clients)) {}
+
+template<typename RecordType>
+QueryServer<RecordType>::~QueryServer() {
+    shut_down();
+}
 
 template <typename RecordType>
 void QueryServer<RecordType>::listen_loop() {
@@ -50,8 +57,10 @@ void QueryServer<RecordType>::start_query(std::shared_ptr<messaging::QueryReques
         network.send(query, meter_id);
     }
     int log2n = std::ceil(std::log2(num_meters));
-    int rounds_for_query = 6 * ProtocolState<RecordType>::FAILURES_TOLERATED + 3 * log2n * log2n + 3 + (int)std::ceil(std::log2(num_meters / (double)(2 * ProtocolState<RecordType>::FAILURES_TOLERATED + 1)));
-    query_timeout_timer = timer_library.register_timer(rounds_for_query * NETWORK_ROUNDTRIP_TIMEOUT, [this]() {
+    int rounds_for_query = 6 * ProtocolState<RecordType>::FAILURES_TOLERATED +
+                           3 * log2n * log2n + 3 +
+                           (int)std::ceil(std::log2(num_meters / (double)(2 * ProtocolState<RecordType>::FAILURES_TOLERATED + 1)));
+    query_timeout_timer = timer_library->register_timer(rounds_for_query * NETWORK_ROUNDTRIP_TIMEOUT, [this]() {
         logger->debug("Utility timed out waiting for query {} after receiving no messages", query_num);
         end_query();
     });
@@ -102,7 +111,8 @@ void QueryServer<RecordType>::end_query() {
 template <typename RecordType>
 void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::SignatureRequest> message) {
     if(curr_query_meters_signed.find(message->sender_id) == curr_query_meters_signed.end()) {
-        auto signed_value = crypto_library.rsa_sign_blinded(std::static_pointer_cast<StringBody>(message->body));
+        auto signed_value = crypto_library.rsa_sign_blinded(
+            *std::static_pointer_cast<messaging::SignatureRequest::body_type>(message->body));
         network.send(std::make_shared<messaging::SignatureResponse>(UTILITY_NODE_ID, signed_value), message->sender_id);
         curr_query_meters_signed.insert(message->sender_id);
     }
@@ -113,14 +123,14 @@ void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::Aggregat
     logger->trace("Utility received an aggregation message: {}", *message);
     curr_query_results.insert(message);
     // Clear the timeout, since we got a message
-    timer_library.cancel_timer(query_timeout_timer);
+    timer_library->cancel_timer(query_timeout_timer);
     // Check if this was definitely the last result from the query
     if(!query_finished && ((int)curr_query_results.size() > 2 * ProtocolState<RecordType>::FAILURES_TOLERATED)) {
         end_query();
     }
     // If the query isn't finished, set a new timeout for the next result message
     if(!query_finished) {
-        query_timeout_timer = timer_library.register_timer(
+        query_timeout_timer = timer_library->register_timer(
             query_timeout_time,
             [this]() {
                 logger->debug("Utility timed out waiting for query {} after receiving {} messages", query_num, curr_query_results.size());

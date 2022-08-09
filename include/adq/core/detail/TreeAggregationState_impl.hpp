@@ -38,6 +38,11 @@ bool TreeAggregationState<RecordType>::done_receiving_from_children() const {
 
 template <typename RecordType>
 void TreeAggregationState<RecordType>::handle_message(const messaging::AggregationMessage<RecordType>& message) {
+    // PROBLEM: There is no "single value" or "vector value" distinction any more; all queries return a single
+    // value of type RecordType, but RecordType may itself be a vector (which it is in the SmartMeters example)
+    // TODO: Use the AggregateFunction from QueryFunctions to combine values from other clients; this will
+    // require asking the QueryClient for its DataSource.
+    // TODO: Replace AggregationMessageValue's built-in vector with a single value of type RecordType
     if(is_single_valued_query(current_query->request_type)) {
         aggregation_intermediate->add_value(message.get_body()->at(0), message.get_num_contributors());
     } else {
@@ -50,8 +55,8 @@ template <typename RecordType>
 void TreeAggregationState<RecordType>::compute_and_send_aggregate(
     const util::unordered_ptr_set<messaging::ValueContribution<RecordType>>& accepted_proxy_values) {
     for(const auto& proxy_value : accepted_proxy_values) {
+        // temporarily omitted: Input Sanity Check
         if(is_single_valued_query(current_query->request_type)) {
-            // temporarily omitted: Input Sanity Check
             aggregation_intermediate->add_value(proxy_value->value.value[0], 1);
         } else {
             aggregation_intermediate->add_values(proxy_value->value.value, 1);

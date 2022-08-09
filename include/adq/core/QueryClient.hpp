@@ -31,10 +31,10 @@ public:
 
 private:
     std::shared_ptr<spdlog::logger> logger;
-    /** The ProtocolState object managing the query protocol for this client device. */
-    ProtocolState<RecordType> query_protocol_state;
     /** The NetworkManager object representing this client device's network interface. */
     NetworkManager<RecordType> network_manager;
+    /** The ProtocolState object managing the query protocol for this client device. */
+    ProtocolState<RecordType> query_protocol_state;
     /** The DataSource object that this device reads data from in response to a query. */
     std::unique_ptr<DataSource<RecordType>> data_source;
 

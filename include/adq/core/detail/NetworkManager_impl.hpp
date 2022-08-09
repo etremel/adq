@@ -2,6 +2,7 @@
 
 #include "adq/core/MessageConsumer.hpp"
 #include "adq/messaging/AggregationMessage.hpp"
+#include "adq/messaging/Message.hpp"
 #include "adq/messaging/MessageType.hpp"
 #include "adq/messaging/OverlayTransportMessage.hpp"
 #include "adq/messaging/PingMessage.hpp"
@@ -168,20 +169,25 @@ void NetworkManager<RecordType>::receive_message(const std::vector<uint8_t>& mes
 }
 
 template <typename RecordType>
-bool NetworkManager<RecordType>::send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id) {
-    // Construct a new socket for this node if there is not one already in the map
+void NetworkManager<RecordType>::initialize_socket(int recipient_id) {
     auto socket_map_find = sockets_by_id.lower_bound(recipient_id);
     if(socket_map_find == sockets_by_id.end() || socket_map_find->first != recipient_id) {
         sockets_by_id.emplace_hint(socket_map_find, recipient_id,
                                    asio::ip::tcp::socket(network_io_context, id_to_ip_map.at(recipient_id)));
     }
+}
+
+template <typename RecordType>
+bool NetworkManager<RecordType>::send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id) {
+    // Construct a new socket for this node if there is not one already in the map
+    initialize_socket(recipient_id);
     std::size_t send_size = mutils::bytes_size(messages.size());
     for(const auto& message : messages) {
         send_size += mutils::bytes_size(*message);
     }
     // Serialize the messages into a buffer that is stored on the heap, so it will remain in scope during the asynchronous write
     std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>(sizeof(send_size) + send_size);
-    std::memcpy(send_buffer->data(), send_size, sizeof(send_size));
+    std::memcpy(send_buffer->data(), &send_size, sizeof(send_size));
     std::size_t bytes_written = sizeof(send_size);
     bytes_written += mutils::to_bytes(messages.size(), send_buffer->data() + bytes_written);
     for(const auto& message : messages) {
@@ -200,15 +206,10 @@ bool NetworkManager<RecordType>::send(const std::list<std::shared_ptr<messaging:
 
 template <typename RecordType>
 bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::AggregationMessage<RecordType>>& message, const int recipient_id) {
-    // Construct a new socket for this node if there is not one already in the map
-    auto socket_map_find = sockets_by_id.lower_bound(recipient_id);
-    if(socket_map_find == sockets_by_id.end() || socket_map_find->first != recipient_id) {
-        sockets_by_id.emplace_hint(socket_map_find, recipient_id,
-                                   asio::ip::tcp::socket(network_io_context, id_to_ip_map.at(recipient_id)));
-    }
+    initialize_socket(recipient_id);
     const std::size_t num_messages = 1;
     std::size_t send_size = mutils::bytes_size(*message);
-    //The utility doesn't need a "number of messages" header because it only accepts one message
+    // The utility doesn't need a "number of messages" header because it only accepts one message
     if(recipient_id != UTILITY_NODE_ID) {
         send_size += mutils::bytes_size(num_messages);
     }
@@ -228,10 +229,10 @@ bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::Aggregati
     return true;
 }
 
-template<typename RecordType>
+template <typename RecordType>
 void NetworkManager<RecordType>::handle_write_complete(int recipient_id, const asio::error_code& error, std::size_t bytes_sent) {
     if(error) {
-        logger->error("Write failed to complete for client {}, after sending {} bytes. Error message: {}", recipient_id, bytes_sent, error.message);
+        logger->error("Write failed to complete for client {}, after sending {} bytes. Error message: {}", recipient_id, bytes_sent, error.message());
         sockets_by_id.erase(recipient_id);
     } else {
         logger->trace("Finished a write of size {} to client {}", bytes_sent, recipient_id);
@@ -240,23 +241,19 @@ void NetworkManager<RecordType>::handle_write_complete(int recipient_id, const a
 
 template <typename RecordType>
 bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id) {
-    // Construct a new socket for this node if there is not one already in the map
-    auto socket_map_find = sockets_by_id.lower_bound(recipient_id);
-    if(socket_map_find == sockets_by_id.end() || socket_map_find->first != recipient_id) {
-        sockets_by_id.emplace_hint(socket_map_find, recipient_id,
-                                   asio::ip::tcp::socket(network_io_context, id_to_ip_map.at(recipient_id)));
-    }
+    initialize_socket(recipient_id);
     // Serialize the ping message
     const std::size_t num_messages = 1;
     std::size_t send_size = mutils::bytes_size(num_messages) + mutils::bytes_size(*message);
-    char buffer[send_size + sizeof(send_size)];
+    std::size_t buffer_size = send_size = sizeof(send_size);
+    uint8_t buffer[buffer_size];
     std::memcpy(buffer, &send_size, sizeof(send_size));
     std::size_t bytes_written = sizeof(send_size);
     bytes_written += mutils::to_bytes(num_messages, buffer + bytes_written);
     bytes_written += mutils::to_bytes(*message, buffer + bytes_written);
     // Pings are used to detect failures, so I'll use a synchronous write for now so that I can detect the errors
     asio::error_code error;
-    asio::write(sockets_by_id.at(recipient_id), asio::buffer(buffer), error);
+    asio::write(sockets_by_id.at(recipient_id), asio::buffer(&buffer, buffer_size), error);
     if(error) {
         logger->debug("Failed to send ping to client {}: {}", recipient_id, error.message());
         sockets_by_id.erase(recipient_id);
@@ -264,6 +261,58 @@ bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::PingMessa
     } else {
         return true;
     }
+}
+template <typename RecordType>
+bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::SignatureRequest>& message) {
+    initialize_socket(UTILITY_NODE_ID);
+    std::size_t send_size = mutils::bytes_size(*message);
+    // Serialize the message into a buffer that is stored on the heap, so it will remain in scope during the asynchronous write
+    std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>(sizeof(send_size) + send_size);
+    std::memcpy(send_buffer->data(), &send_size, sizeof(send_size));
+    std::size_t bytes_written = sizeof(send_size);
+    // No "number of messages" header for the utility
+    bytes_written += mutils::to_bytes(*message, send_buffer->data() + bytes_written);
+    // Capture a copy of the send_buffer's shared_ptr so it stays alive until the write finishes
+    asio::async_write(sockets_by_id.at(UTILITY_NODE_ID),
+                      asio::buffer(*send_buffer),
+                      [this, send_buffer](const asio::error_code& error, std::size_t bytes_sent) {
+                          handle_write_complete(UTILITY_NODE_ID, error, bytes_sent);
+                      });
+    return true;
+}
+template <typename RecordType>
+void NetworkManager<RecordType>::send(const std::shared_ptr<messaging::QueryRequest>& message, const int recipient_id) {
+    initialize_socket(recipient_id);
+    const std::size_t num_messages = 1;
+    std::size_t send_size = mutils::bytes_size(num_messages) + mutils::bytes_size(*message);
+    std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>(sizeof(send_size) + send_size);
+    std::memcpy(send_buffer->data(), &send_size, sizeof(send_size));
+    std::size_t bytes_written = sizeof(send_size);
+    // Send the number of messages (one), then the message itself
+    bytes_written += mutils::to_bytes(num_messages, send_buffer->data() + bytes_written);
+    bytes_written += mutils::to_bytes(*message, send_buffer->data() + bytes_written);
+    asio::async_write(sockets_by_id.at(recipient_id),
+                      asio::buffer(*send_buffer),
+                      [this, recipient_id, send_buffer](const asio::error_code& error, std::size_t bytes_sent) {
+                          handle_write_complete(recipient_id, error, bytes_sent);
+                      });
+}
+template <typename RecordType>
+void NetworkManager<RecordType>::send(const std::shared_ptr<messaging::SignatureResponse>& message, const int recipient_id) {
+    // Exactly the same method as send(QueryRequest), just with a different argument type
+    initialize_socket(recipient_id);
+    const std::size_t num_messages = 1;
+    std::size_t send_size = mutils::bytes_size(num_messages) + mutils::bytes_size(*message);
+    std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>(sizeof(send_size) + send_size);
+    std::memcpy(send_buffer->data(), &send_size, sizeof(send_size));
+    std::size_t bytes_written = sizeof(send_size);
+    bytes_written += mutils::to_bytes(num_messages, send_buffer->data() + bytes_written);
+    bytes_written += mutils::to_bytes(*message, send_buffer->data() + bytes_written);
+    asio::async_write(sockets_by_id.at(recipient_id),
+                      asio::buffer(*send_buffer),
+                      [this, recipient_id, send_buffer](const asio::error_code& error, std::size_t bytes_sent) {
+                          handle_write_complete(recipient_id, error, bytes_sent);
+                      });
 }
 
 template <typename RecordType>

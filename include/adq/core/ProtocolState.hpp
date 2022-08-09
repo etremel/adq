@@ -1,7 +1,7 @@
 #pragma once
 
-
 #include "CrusaderAgreementState.hpp"
+#include "CryptoLibrary.hpp"
 #include "TreeAggregationState.hpp"
 #include "adq/core/InternalTypes.hpp"
 #include "adq/messaging/ValueContribution.hpp"
@@ -12,11 +12,11 @@
 
 #include <spdlog/spdlog.h>
 
-#include <memory>
-#include <vector>
-#include <set>
-#include <list>
 #include <cmath>
+#include <list>
+#include <memory>
+#include <set>
+#include <vector>
 
 namespace adq {
 
@@ -89,9 +89,12 @@ private:
     util::unordered_ptr_set<messaging::ValueContribution<RecordType>> accepted_proxy_values;
     void handle_agreement_phase_message(const messaging::OverlayMessage& message);
     void handle_shuffle_phase_message(const messaging::OverlayMessage& message);
+
+public:
     void handle_signature_response(messaging::SignatureResponse& message);
     /* ------ */
 
+private:
     /**
      * Helper method that generates an encrypted multicast of a ValueContribution
      * to the proxies it specifies, assuming the overlay is starting in round 0,
@@ -145,7 +148,17 @@ public:
     ProtocolState(int num_clients, int local_client_id, NetworkManager<RecordType>& network_manager,
                   const std::string& private_key_filename, const std::map<int, std::string>& public_key_files_by_id);
 
-    void start_query(const messaging::QueryRequest& query_request, const RecordType& contributed_data);
+    /**
+     * Starts the query protocol to respond to a specific query request with the
+     * provided data. Stores the query request message for reference, for the
+     * duration of the query.
+     *
+     * @param query_request A shared_ptr to the query request message, which
+     * ProtocolState will now own.
+     * @param contributed_data The data to contribute for this query, supplied
+     * by the client.
+     */
+    void start_query(std::shared_ptr<messaging::QueryRequest> query_request, const RecordType& contributed_data);
     /**
      * Processes an overlay message that has been received for the current round.
      * This includes resetting the message timeout for this round, decrypting the
@@ -189,6 +202,9 @@ public:
     int get_num_aggregation_groups() const { return num_aggregation_groups; }
     int get_current_query_num() const { return my_contribution ? my_contribution->query_num : -1; }
     int get_current_overlay_round() const { return overlay_round; }
+
+    bool is_in_overlay_phase() const { return protocol_phase == ProtocolPhase::SHUFFLE || protocol_phase == ProtocolPhase::AGREEMENT; }
+    bool is_in_aggregate_phase() const { return protocol_phase == ProtocolPhase::AGGREGATE; }
 
     /** The maximum time (ms) any meter should wait on receiving a message in an overlay round */
     static constexpr int OVERLAY_ROUND_TIMEOUT = 100;

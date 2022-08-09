@@ -72,13 +72,11 @@ void SignedValue<RecordType>::post_object(const std::function<void(const uint8_t
 
 template <typename RecordType>
 std::unique_ptr<SignedValue<RecordType>> SignedValue<RecordType>::from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer) {
-    // Read the ValueContribution, which will also read past the MessageBodyType
-    std::unique_ptr<ValueContribution<RecordType>> contribution = mutils::from_bytes<ValueContribution<RecordType>>(p, buffer);
+    // Read the ValueContribution, which will also read past the MessageBodyType, and put it in a shared_ptr
+    std::shared_ptr<ValueContribution<RecordType>> contribution = mutils::from_bytes<ValueContribution<RecordType>>(p, buffer);
     std::size_t bytes_read = mutils::bytes_size(*contribution);
     std::unique_ptr<std::map<int, SignatureArray>> signatures = from_bytes_map(p, buffer + bytes_read);
-    // Fix the pointer type of the ValueContribution
-    std::shared_ptr<ValueContribution<RecordType> contribution_shared(std::move(contribution));
-    return std::make_unique<SignedValue<RecordType>>(contribution_shared, *signatures);
+    return std::make_unique<SignedValue<RecordType>>(contribution, *signatures);
 }
 
 }  // namespace messaging

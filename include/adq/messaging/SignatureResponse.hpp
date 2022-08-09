@@ -10,7 +10,7 @@
 
 #include "Message.hpp"
 #include "MessageType.hpp"
-#include "StringBody.hpp"
+#include "ByteBody.hpp"
 
 #include <memory>
 #include <cstring>
@@ -21,13 +21,13 @@ namespace adq {
 namespace messaging {
 
 /**
- * Trivial subclass of Message that specializes its body to be a StringBody.
+ * Trivial subclass of Message that specializes its body to be a ByteBody.
  */
 class SignatureResponse : public Message {
 public:
     static const constexpr MessageType type = MessageType::SIGNATURE_RESPONSE;
-    using body_type = StringBody;
-    SignatureResponse(const int sender_id, std::shared_ptr<StringBody> encrypted_response)
+    using body_type = ByteBody;
+    SignatureResponse(const int sender_id, std::shared_ptr<ByteBody> encrypted_response)
         : Message(sender_id, std::move(encrypted_response)){};
     virtual ~SignatureResponse() = default;
 
@@ -53,15 +53,13 @@ public:
         int sender_id;
         std::memcpy(&sender_id, buffer + bytes_read, sizeof(int));
         bytes_read += sizeof(int);
-        std::unique_ptr<body_type> body = mutils::from_bytes<body_type>(m, buffer + bytes_read);
-        // Whack the pointer type into the one SignatureResponse expects
-        auto body_shared = std::shared_ptr<body_type>(std::move(body));
+        std::shared_ptr<body_type> body_shared = mutils::from_bytes<body_type>(m, buffer + bytes_read);
         return std::make_unique<SignatureResponse>(sender_id, body_shared);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& out, const SignatureResponse& message) {
-    return out << "SignatureResponse with body: " << *(std::static_pointer_cast<StringBody>(message.body));
+    return out << "SignatureResponse with body: " << *(std::static_pointer_cast<SignatureResponse::body_type>(message.body));
 }
 
 } /* namespace messaging */

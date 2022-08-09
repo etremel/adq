@@ -53,6 +53,11 @@ private:
      * other clients
      */
     asio::ip::tcp::acceptor connection_listener;
+    /**
+     * Constructs a new socket for the specified recipient if there is not
+     * already one in the socket map.
+     */
+    void initialize_socket(int recipient_id);
 
     /**
      * Handler function for ASIO accept events.
@@ -176,6 +181,20 @@ public:
     bool send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id);
     /** Sends a signature request message to the query server. */
     bool send(const std::shared_ptr<messaging::SignatureRequest>& message);
+    /**
+     * Sends a query request message to the client with the specified ID. This should only
+     * be used by the query server.
+     * @param message The message to send
+     * @param recipient_id The ID of the recipient
+     */
+    void send(const std::shared_ptr<messaging::QueryRequest>& message, const int recipient_id);
+    /**
+     * Sends a signature response (blindly signed value) back to a client. This should only
+     * be used by teh query server.
+     * @param message The message to send
+     * @param recipient_id The ID of the recipient
+     */
+    void send(const std::shared_ptr<messaging::SignatureResponse>& message, const int recipient_id);
 };
 }  // namespace adq
 

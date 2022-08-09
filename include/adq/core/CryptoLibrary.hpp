@@ -1,11 +1,13 @@
 #pragma once
 
 #include "InternalTypes.hpp"
+#include "adq/messaging/ByteBody.hpp"
 #include "adq/messaging/OverlayMessage.hpp"
 #include "adq/messaging/SignedValue.hpp"
-#include "adq/messaging/StringBody.hpp"
 #include "adq/messaging/ValueContribution.hpp"
 #include "adq/messaging/ValueTuple.hpp"
+#include "adq/openssl/blind_signature.hpp"
+#include "adq/openssl/envelope_encryption.hpp"
 #include "adq/openssl/signature.hpp"
 
 #include <array>
@@ -26,6 +28,10 @@ private:
     openssl::EnvelopeKey my_private_key;
     std::map<int, openssl::EnvelopeKey> public_keys_by_id;
     openssl::Signer my_signer;
+    openssl::BlindSigner my_blind_signer;
+    /** A blind signature client configured to communicate with the utility */
+    openssl::BlindSignatureClient blind_signature_client;
+    openssl::EnvelopeDecryptor my_decryptor;
 
 public:
     /**
@@ -47,6 +53,18 @@ public:
     void rsa_encrypt(messaging::OverlayMessage& message, const int target_id);
 
     /**
+     * Encrypts a ValueTuple under under the public key of the given client.
+     * @param value The ValueTuple to encrypt
+     * @param target_id The ID of the client whose public key should
+     * be used to encrypt the ValueTuple
+     * @return A byte array representing the bytes of the ciphertext (as a
+     * ByteBody since it will probably be sent in a message)
+     */
+    template <typename RecordType>
+    std::shared_ptr<messaging::ByteBody> rsa_encrypt(const messaging::ValueTuple<RecordType>& value,
+                                                     const int target_id);
+
+    /**
      * Decrypts the body of an encrypted OverlayMessage, using the private
      * key of the current client.
      * @param message An OverlayMessage with an encrypted body; after calling
@@ -63,62 +81,34 @@ public:
      * @return A byte sequence containing the blinded message.
      */
     template <typename RecordType>
-    std::shared_ptr<messaging::StringBody> rsa_blind(const messaging::ValueTuple<RecordType>& value);
+    std::shared_ptr<messaging::ByteBody> rsa_blind(const messaging::ValueTuple<RecordType>& value);
 
     /**
      * Signs a blinded message with the current client's private key.
-     * This should not be used to sign any other kind of message, because
-     * it uses a nonstandard "raw" signature.
+     * This should not be used to sign any other kind of message, and
+     * should only be used by the utility.
      * @param encrypted_message A blinded message to sign, which will be
      * stored as a sequence of bytes and sent in an OverlayMessage (hence
-     * the StringBody type).
+     * the ByteBody type).
      * @return A blind signature over the message, which is also a
-     * sequence of bytes represented as a StringBody
+     * sequence of bytes represented as a ByteBody
      */
-    std::shared_ptr<messaging::StringBody> rsa_sign_blinded(const messaging::StringBody& blinded_message);
+    std::shared_ptr<messaging::ByteBody> rsa_sign_blinded(const messaging::ByteBody& blinded_message);
 
     /**
-     * Unblinds a signature using the inverse of the blinding value this
-     * client most recently used. This only works because blind-signature
-     * requests are sent sequentially (and to only one destination,
+     * Unblinds a signature on a ValueTuple using the inverse of the blinding
+     * secret this client most recently used. This only works because blind-
+     * signature requests are sent sequentially (and to only one destination,
      * the utility). The unblinded signature is placed in the SignatureArray
      * parameter.
+     * @param value The ValueTuple that the signature should sign (after unblinding)
      * @param blinded_signature The blinded signature to unblind
      * @param signature The unblinded signature
      */
-    void rsa_unblind_signature(const std::string& blinded_signature,
-                               SignatureArray& signature);
-
-    /**
-     * Signs a ciphertext with the current client's private key.
-     * @param encrypted_message The ciphertext to sign, which we expect to
-     * be the encrypted body of an OverlayMessage (hence the StringBody type).
-     * @return A blind signature over the ciphertext, which is also a
-     * ciphertext represented as a StringBody
-     */
-    std::shared_ptr<messaging::StringBody> rsa_sign_encrypted(const messaging::StringBody& encrypted_message);
-
-    /**
-     * Decrypts a ciphertext with the current client's private key, assuming
-     * the ciphertext is a blinded signature, and places the resulting
-     * signature in the SignatureArray.
-     * @param blinded_signature The blinded signature to decrypt
-     * @param signature The decrypted signature
-     */
-    void rsa_decrypt_signature(const std::string& blinded_signature,
-                               SignatureArray& signature);
-
-    /**
-     * Encrypts a ValueTuple under under the public key of the given client.
-     * @param value The ValueTuple to encrypt
-     * @param target_id The ID of the client whose public key should
-     * be used to encrypt the ValueTuple
-     * @return A string representing the bits of the ciphertext (as a
-     * StringBody since it will probably be sent in a message)
-     */
     template <typename RecordType>
-    std::shared_ptr<messaging::StringBody> rsa_encrypt(const messaging::ValueTuple<RecordType>& value,
-                                                       const int target_id);
+    void rsa_unblind_signature(const messaging::ValueTuple<RecordType>& value,
+                               const std::vector<uint8_t>& blinded_signature,
+                               SignatureArray& signature);
 
     /**
      * Signs a ValueContribution with the current client's private key, and
@@ -128,6 +118,15 @@ public:
      */
     template <typename RecordType>
     void rsa_sign(const messaging::ValueContribution<RecordType>& value, SignatureArray& signature);
+
+    /**
+     * Signs a SignedValue with the current client's private key, and places
+     * the resulting signature in the SignatureArray
+     * @param value The SignedValue to sign
+     * @param signature The signature over the SignedValue
+     */
+    template <typename RecordType>
+    void rsa_sign(const messaging::SignedValue<RecordType>& value, SignatureArray& signature);
 
     /**
      * Verifies the signature on a ValueContribution against the public key
@@ -143,14 +142,17 @@ public:
                     const SignatureArray& signature, const int signer_id);
 
     /**
-     * Signs a SignedValue with the current client's private key, and places
-     * the resulting signature in the SignatureArray
-     * @param value The SignedValue to sign
-     * @param signature The signature over the SignedValue
+     * Verifies the signature on a ValueTuple against the utility's public key.
+     * This is the signature that should have resulted from unblinding a
+     * signature from the utility.
+     *
+     * @param value The ValueTuple that the signature covers
+     * @param signature The signature on the ValueTuple
+     * @return true if the signature is valid, false if it is not
      */
     template <typename RecordType>
-    void rsa_sign(const messaging::SignedValue<RecordType>& value, SignatureArray& signature);
-
+    bool rsa_verify(const messaging::ValueTuple<RecordType>& value,
+                    const SignatureArray& signature);
     /**
      * Verifies the signature on a SignedValue against the public key of
      * the meter with the given ID.

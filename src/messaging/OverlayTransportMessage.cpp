@@ -1,6 +1,6 @@
 #include "adq/messaging/OverlayTransportMessage.hpp"
 
-#include "adq/mutils-serialization/SerializationSupport.hpp
+#include "adq/mutils-serialization/SerializationSupport.hpp"
 #include "adq/messaging/MessageBodyType.hpp"
 #include "adq/messaging/MessageType.hpp"
 #include "adq/messaging/PathOverlayMessage.hpp"

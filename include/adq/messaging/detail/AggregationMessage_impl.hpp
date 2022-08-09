@@ -23,11 +23,6 @@ std::ostream& operator<<(std::ostream& out, const AggregationMessageValue<Record
 }
 
 template <typename RecordType>
-bool operator==(const AggregationMessage<RecordType>& lhs, const AggregationMessage<RecordType>& rhs) {
-    return lhs.num_contributors == rhs.num_contributors && lhs.query_num == rhs.query_num && (*lhs.body) == (*rhs.body);
-}
-
-template <typename RecordType>
 bool operator!=(const AggregationMessage<RecordType>& lhs, const AggregationMessage<RecordType>& rhs) {
     return !(lhs == rhs);
 }

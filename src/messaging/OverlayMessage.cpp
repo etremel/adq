@@ -97,7 +97,7 @@ std::unique_ptr<OverlayMessage> OverlayMessage::from_bytes(mutils::Deserializati
     // We can't use the private constructor with make_unique
     auto constructed_message = std::unique_ptr<OverlayMessage>(new OverlayMessage());
     bytes_read += from_bytes_common(*constructed_message, buffer + bytes_read);
-    return std::move(constructed_message);
+    return constructed_message;
 }
 
 std::size_t OverlayMessage::from_bytes_common(OverlayMessage& partial_overlay_message, uint8_t const* buffer) {
