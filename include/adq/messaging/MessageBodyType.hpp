@@ -19,7 +19,6 @@ enum class MessageBodyType : int16_t {
     SIGNED_VALUE,
     VALUE_CONTRIBUTION,
     AGGREGATION_VALUE,
-    STRING,
     BYTES
 };
 

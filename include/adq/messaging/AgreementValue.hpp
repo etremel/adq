@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MessageBody.hpp"
+#include "MessageBodyType.hpp"
 #include "SignedValue.hpp"
 
 #include <array>

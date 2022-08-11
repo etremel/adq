@@ -60,7 +60,7 @@ SimSmartMeter::SimSmartMeter(const IncomeLevel& income_level, std::list<Device>&
     aggregate_functions[SUM_VECTORS] = [](const std::vector<std::vector<adq::FixedPoint_t>>& records, const uint8_t* const serialized_args) {
         std::vector<adq::FixedPoint_t> sum_vector(records[0].size());
         for(const auto& record_vector : records) {
-            for(int i = 0; i < record_vector.size(); ++i) {
+            for(std::size_t i = 0; i < record_vector.size(); ++i) {
                 sum_vector[i] += record_vector[i];
             }
         }

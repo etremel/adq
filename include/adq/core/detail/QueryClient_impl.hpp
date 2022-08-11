@@ -10,6 +10,7 @@
 #include "adq/messaging/QueryRequest.hpp"
 
 #include <spdlog/spdlog.h>
+#include <spdlog/fmt/ostr.h>
 
 #include <memory>
 
@@ -27,7 +28,7 @@ QueryClient<RecordType>::QueryClient(int id,
       num_clients(num_clients),
       logger(spdlog::get("global_logger")),
       network_manager(this, service_port, client_id_to_ip_map),
-      query_protocol_state(num_clients, id, network_manager, private_key_filename, public_key_files_by_id),
+      query_protocol_state(num_clients, id, network_manager, *data_source, private_key_filename, public_key_files_by_id),
       data_source(std::move(data_source)) {}
 
 template <typename RecordType>

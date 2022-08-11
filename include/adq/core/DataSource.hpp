@@ -13,7 +13,9 @@ namespace adq {
  * The application should subclass DataSource and fill in these maps with function
  * pointers to its own application-specific logic.
  *
- * @tparam RecordType The type of data contained in an individual record that a query could retrieve
+ * @tparam RecordType The type of data contained in an individual record that a
+ * query could retrieve. RecordType must be default-constructable and implement
+ * the ByteRepresentable interface.
  */
 template <typename RecordType>
 class DataSource {

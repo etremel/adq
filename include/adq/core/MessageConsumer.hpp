@@ -45,6 +45,6 @@ public:
      */
     virtual void handle_message(std::shared_ptr<messaging::SignatureRequest> message) = 0;
 
-    virtual ~MessageConsumer();
+    virtual ~MessageConsumer() = default;
 };
 }  // namespace adq

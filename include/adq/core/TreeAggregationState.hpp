@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NetworkManager.hpp"
+#include "adq/core/DataSource.hpp"
 #include "adq/core/InternalTypes.hpp"
 #include "adq/messaging/QueryRequest.hpp"
 #include "adq/messaging/ValueContribution.hpp"
@@ -37,14 +38,32 @@ public:
           current_query(query_request),
           initialized(false),
           children_received_from(0),
-          children_needed(2) {}
-    /** Performs initial setup on the tree aggregation state, such as initializing
-     * the local intermediate aggregate value to an appropriate zero.*/
-    void initialize(const int data_array_length, const std::set<int>& failed_meter_ids);
+          children_needed(2),
+          aggregation_intermediate(std::make_shared<messaging::AggregationMessage<RecordType>>(
+        node_id, current_query->query_number,
+        std::make_shared<messaging::AggregationMessageValue<RecordType>>(), 0)) {}
+    /** Performs initial setup on the tree aggregation state once the aggregation phase starts. */
+    void initialize(const std::set<int>& failed_meter_ids);
     bool is_initialized() const { return initialized; }
     bool done_receiving_from_children() const;
-    void handle_message(const messaging::AggregationMessage<RecordType>& message);
-    void compute_and_send_aggregate(const util::unordered_ptr_set<messaging::ValueContribution<RecordType>>& accepted_proxy_values);
+    /**
+     * Combines the data in an incoming AggregationMessage with the current
+     * aggregated value, using the DataSource's aggregation function.
+     */
+    void handle_message(const messaging::AggregationMessage<RecordType>& message,
+                        DataSource<RecordType>& data_source);
+    /**
+     * Computes this client's contribution to the aggregation phase, by combining
+     * the records in accepted_proxy_values using the DataSource's aggregation
+     * function, and sends a new AggregationMessage over the network.
+     *
+     * @param accepted_proxy_values The set of values this client will contribute
+     * to the aggregation phase.
+     * @param data_source The DataSource provided by the client, which will be
+     * used for its AggregateFunction.
+     */
+    void compute_and_send_aggregate(const util::unordered_ptr_set<messaging::ValueContribution<RecordType>>& accepted_proxy_values,
+                                    DataSource<RecordType>& data_source);
 };
 
 }  // namespace adq

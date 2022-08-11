@@ -44,17 +44,18 @@ add_subdirectory(src/util)
 add_subdirectory(apps)
 
 add_library(adq SHARED
-    # $<TARGET_OBJECTS:core>
-    $<TARGET_OBJECTS:mutils-serialization>
+    $<TARGET_OBJECTS:core>
     $<TARGET_OBJECTS:messaging>
+    $<TARGET_OBJECTS:mutils-serialization>
     $<TARGET_OBJECTS:openssl_wrapper>
     $<TARGET_OBJECTS:util>)
 
 target_link_libraries(adq
     pthread
     rt
+    spdlog::spdlog
     ${mutils_LIBRARIES}
-    ${OPENSSL_LIBRARIES})
+    OpenSSL::Crypto)
 
 # When building (locally), the adq target has a public dependency on the local include directory
 # This means the executable in the apps folder will know to look in the local include directory

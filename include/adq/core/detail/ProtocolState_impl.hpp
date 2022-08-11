@@ -4,13 +4,13 @@
 #include "adq/core/CryptoLibrary.hpp"
 #include "adq/core/NetworkManager.hpp"
 #include "adq/core/TreeAggregationState.hpp"
+#include "adq/messaging/ByteBody.hpp"
 #include "adq/messaging/PathOverlayMessage.hpp"
 #include "adq/messaging/PingMessage.hpp"
 #include "adq/messaging/QueryRequest.hpp"
 #include "adq/messaging/SignatureRequest.hpp"
 #include "adq/messaging/SignatureResponse.hpp"
 #include "adq/messaging/SignedValue.hpp"
-#include "adq/messaging/StringBody.hpp"
 #include "adq/messaging/ValueContribution.hpp"
 #include "adq/messaging/ValueTuple.hpp"
 #include "adq/util/LinuxTimerManager.hpp"
@@ -25,7 +25,8 @@ namespace adq {
 
 template <typename RecordType>
 ProtocolState<RecordType>::ProtocolState(int num_clients, int local_client_id, NetworkManager<RecordType>& network_manager,
-                                         const std::string& private_key_filename, const std::map<int, std::string>& public_key_files_by_id)
+                                         DataSource<RecordType>& data_source, const std::string& private_key_filename,
+                                         const std::map<int, std::string>& public_key_files_by_id)
     : logger(spdlog::get("global_logger")),
       protocol_phase(ProtocolPhase::IDLE),
       meter_id(local_client_id),
@@ -38,6 +39,7 @@ ProtocolState<RecordType>::ProtocolState(int num_clients, int local_client_id, N
       ping_response_from_predecessor(false),
       timers(std::make_unique<util::LinuxTimerManager>()),
       network(network_manager),
+      data_source(data_source),
       crypto(private_key_filename, public_key_files_by_id),
       agreement_start_round(0) {}
 
@@ -158,11 +160,17 @@ void ProtocolState<RecordType>::handle_agreement_phase_message(const messaging::
 }
 
 template <typename RecordType>
+void ProtocolState<RecordType>::handle_aggregation_message(messaging::AggregationMessage<RecordType>& message) {
+    aggregation_phase_state->handle_message(message, data_source);
+    send_aggregate_if_done();
+}
+
+template <typename RecordType>
 void ProtocolState<RecordType>::start_aggregate_phase() {
     // Since we're now done with the overlay, stop the timeout waiting for the next round
     timers->cancel_timer(round_timeout_timer);
-    // Initialize aggregation helper, assuming all value-arrays are the same size as the one this meter contributed
-    aggregation_phase_state->initialize(my_contribution->value.size(), failed_meter_ids);
+    // Initialize aggregation helper
+    aggregation_phase_state->initialize(failed_meter_ids);
     // If this node is a leaf, aggregation might be done already
     send_aggregate_if_done();
     // If not done already, check future messages for aggregation messages already received from children
@@ -180,7 +188,7 @@ void ProtocolState<RecordType>::start_aggregate_phase() {
 template <typename RecordType>
 void ProtocolState<RecordType>::send_aggregate_if_done() {
     if(aggregation_phase_state->done_receiving_from_children()) {
-        aggregation_phase_state->compute_and_send_aggregate(accepted_proxy_values);
+        aggregation_phase_state->compute_and_send_aggregate(accepted_proxy_values, data_source);
         protocol_phase = ProtocolPhase::IDLE;
         logger->debug("Meter {} is finished with Aggregate", meter_id);
     }

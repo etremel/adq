@@ -6,12 +6,14 @@
  */
 
 #include "adq/messaging/OverlayMessage.hpp"
+
 #include "adq/core/CryptoLibrary.hpp"
 #include "adq/messaging/AgreementValue.hpp"
+#include "adq/messaging/ByteBody.hpp"
+#include "adq/messaging/MessageBody.hpp"
 #include "adq/messaging/PathOverlayMessage.hpp"
 #include "adq/messaging/QueryRequest.hpp"
 #include "adq/messaging/SignedValue.hpp"
-#include "adq/messaging/StringBody.hpp"
 #include "adq/messaging/ValueContribution.hpp"
 #include "adq/mutils-serialization/SerializationSupport.hpp"
 
@@ -29,25 +31,23 @@ std::ostream& operator<<(std::ostream& out, const OverlayMessage& message) {
     out << "{QueryNum=" << message.query_num << "|Destination=" << message.destination << "|Body=";
     // Force C++ to use dynamic dispatch on operator<< even though it doesn't want to
     // PROBLEM: Most of these now need a template parameter RecordType, but OverlayMessage doesn't know it
-    /*
     if(message.body == nullptr) {
         out << "null";
-    } else if(auto av_body = std::dynamic_pointer_cast<AgreementValue>(message.body)) {
-        out << *av_body;
+    // } else if(auto av_body = std::dynamic_pointer_cast<AgreementValue>(message.body)) {
+    //     out << *av_body;
     } else if(auto pom_body = std::dynamic_pointer_cast<PathOverlayMessage>(message.body)) {
         out << *pom_body;
     } else if(auto om_body = std::dynamic_pointer_cast<OverlayMessage>(message.body)) {
         out << *om_body;
-    } else if(auto sv_body = std::dynamic_pointer_cast<SignedValue>(message.body)) {
-        out << *sv_body;
-    } else if(auto string_body = std::dynamic_pointer_cast<StringBody>(message.body)) {
-        out << *string_body;
-    } else if(auto vc_body = std::dynamic_pointer_cast<ValueContribution>(message.body)) {
-        out << *vc_body;
+    // } else if(auto sv_body = std::dynamic_pointer_cast<SignedValue>(message.body)) {
+    //     out << *sv_body;
+    } else if(auto byte_body = std::dynamic_pointer_cast<ByteBody>(message.body)) {
+        out << *byte_body;
+    // } else if(auto vc_body = std::dynamic_pointer_cast<ValueContribution>(message.body)) {
+    //     out << *vc_body;
     } else {
         out << "UNKNOWN TYPE @ " << message.body;
     }
-    */
     out << "}";
     return out;
 }

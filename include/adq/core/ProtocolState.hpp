@@ -3,6 +3,7 @@
 #include "CrusaderAgreementState.hpp"
 #include "CryptoLibrary.hpp"
 #include "TreeAggregationState.hpp"
+#include "adq/core/DataSource.hpp"
 #include "adq/core/InternalTypes.hpp"
 #include "adq/messaging/ValueContribution.hpp"
 #include "adq/messaging/ValueTuple.hpp"
@@ -81,11 +82,18 @@ private:
     std::unique_ptr<util::TimerManager> timers;
     /** A reference to the NetworkManager stored in the QueryClient. */
     NetworkManager<RecordType>& network;
+    /**
+     * A reference to the DataSource stored in the QueryClient. This is only
+     * used to access the DataSource's AggregateFunction, when handling
+     * aggregation messages.
+     */
+    DataSource<RecordType>& data_source;
     CryptoLibrary crypto;
 
     /* --- Specific to BFT agreement --- */
     std::unique_ptr<CrusaderAgreementState<RecordType>> agreement_phase_state;
     int agreement_start_round;
+    /** The subset of proxy_values accepted after running Crusader Agreement. */
     util::unordered_ptr_set<messaging::ValueContribution<RecordType>> accepted_proxy_values;
     void handle_agreement_phase_message(const messaging::OverlayMessage& message);
     void handle_shuffle_phase_message(const messaging::OverlayMessage& message);
@@ -139,14 +147,19 @@ public:
      *
      * @param num_clients The total number of clients in the network
      * @param local_client_id This client's ID
-     * @param network_manager A reference to the NetworkManager that will  be used to send messages
+     * @param network_manager A reference to the NetworkManager that will be used to send messages
+     * @param data_source A reference to the client's DataSource, which will be used to
+     * compute aggregates when handling AggregationMessages.
      * @param private_key_filename The file containing the private key for this client.
      * Used to construct the CryptoLibrary.
      * @param public_key_files_by_id A map from client IDs to files containing the
      * public keys of those clients. Used to construct the CryptoLibrary.
      */
-    ProtocolState(int num_clients, int local_client_id, NetworkManager<RecordType>& network_manager,
-                  const std::string& private_key_filename, const std::map<int, std::string>& public_key_files_by_id);
+    ProtocolState(int num_clients, int local_client_id,
+                  NetworkManager<RecordType>& network_manager,
+                  DataSource<RecordType>& data_source,
+                  const std::string& private_key_filename,
+                  const std::map<int, std::string>& public_key_files_by_id);
 
     /**
      * Starts the query protocol to respond to a specific query request with the

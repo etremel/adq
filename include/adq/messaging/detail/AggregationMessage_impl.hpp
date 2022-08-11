@@ -14,12 +14,13 @@ namespace messaging {
 
 template <typename RecordType>
 std::ostream& operator<<(std::ostream& out, const AggregationMessageValue<RecordType>& v) {
-    if(!v.empty()) {
-        out << '[';
-        std::copy(v.begin(), v.end(), std::ostream_iterator<RecordType>(out, ", "));
-        out << "\b\b]";
-    }
+    out << v.value;
     return out;
+}
+
+template<typename RecordType>
+bool operator==(const AggregationMessage<RecordType>& lhs, const AggregationMessage<RecordType>& rhs) {
+    return lhs.num_contributors == rhs.num_contributors && lhs.query_num == rhs.query_num && (*lhs.body) == (*rhs.body);
 }
 
 template <typename RecordType>
@@ -29,21 +30,7 @@ bool operator!=(const AggregationMessage<RecordType>& lhs, const AggregationMess
 
 template <typename RecordType>
 std::ostream& operator<<(std::ostream& out, const AggregationMessage<RecordType>& m) {
-    return out << *m.get_body() << " | Contributors: " << m.get_num_contributors();
-}
-
-template <typename RecordType>
-void AggregationMessage<RecordType>::add_value(const RecordType& value, int num_contributors) {
-    (*get_body())[0] += value;
-    this->num_contributors += num_contributors;
-}
-
-template <typename RecordType>
-void AggregationMessage<RecordType>::add_values(const std::vector<RecordType>& values, const int num_contributors) {
-    assert(values.size() == get_body()->size());
-    // Add all elements of values to their corresponding elements in the message body
-    std::transform(values.begin(), values.end(), get_body()->begin(), get_body()->begin(), std::plus<RecordType>());
-    this->num_contributors += num_contributors;
+    return out << *m.get_body() << " | Contributors: " << m.num_contributors;
 }
 
 template <typename RecordType>

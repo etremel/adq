@@ -17,78 +17,50 @@
 namespace adq {
 namespace messaging {
 
-/** Decorates std::vector with the MessageBody type so it can be the payload of a Message. */
+/**
+ * Wraps a value of type RecordType in a MessageBody so it can be the body of an
+ * AggregationMessage.
+ *
+ * @tparam RecordType The type of data being collected by queries
+ */
 template <typename RecordType>
-class AggregationMessageValue : public MessageBody {
-private:
-    std::vector<RecordType> data;
+struct AggregationMessageValue : public MessageBody {
+    RecordType value;
 
-public:
     static const constexpr MessageBodyType type = MessageBodyType::AGGREGATION_VALUE;
-    template <typename... A>
-    AggregationMessageValue(A&&... args) : data(std::forward<A>(args)...) {}
+    AggregationMessageValue() = default;
+    AggregationMessageValue(const RecordType& value) : value(value) {}
     AggregationMessageValue(const AggregationMessageValue&) = default;
     AggregationMessageValue(AggregationMessageValue&&) = default;
     virtual ~AggregationMessageValue() = default;
-    operator std::vector<RecordType>() const { return data; }
-    operator std::vector<RecordType>&() { return data; }
-    // Boilerplate copy-and-pasting of the entire interface of std::vector follows
-    using size_type = typename decltype(data)::size_type;
-    using iterator = typename decltype(data)::iterator;
-    using const_iterator = typename decltype(data)::const_iterator;
-    using reference = typename decltype(data)::reference;
-    using const_reference = typename decltype(data)::const_reference;
-    size_type size() const noexcept { return data.size(); }
-    template <typename... A>
-    void resize(A&&... args) { return data.resize(std::forward<A>(args)...); }
-    template <typename... A>
-    void emplace_back(A&&... args) { return data.emplace_back(std::forward<A>(args)...); }
-    iterator begin() { return data.begin(); }
-    const_iterator begin() const { return data.begin(); }
-    iterator end() { return data.end(); }
-    const_iterator end() const { return data.end(); }
-    const_iterator cbegin() const { return data.cbegin(); }
-    const_iterator cend() const { return data.cend(); }
-    bool empty() const noexcept { return data.empty(); }
-    void clear() noexcept { data.clear(); }
-    reference at(size_type i) { return data.at(i); }
-    const_reference at(size_type i) const { return data.at(i); }
-    reference operator[](size_type i) { return data[i]; }
-    const_reference operator[](size_type i) const { return data[i]; }
-    template <typename A>
-    AggregationMessageValue<RecordType>& operator=(A&& other) {
-        data.operator=(std::forward<A>(other));
-        return *this;
-    }
-    // An argument of type AggregationMessageValue won't forward to std::vector::operator=
+
     AggregationMessageValue<RecordType>& operator=(const AggregationMessageValue<RecordType>& other) {
-        data = other.data;
+        value = other.value;
         return *this;
     }
-    // This is the only method that differs from std::vector
     inline bool operator==(const MessageBody& _rhs) const {
         if(auto* rhs = dynamic_cast<const AggregationMessageValue<RecordType>*>(&_rhs))
-            return this->data == rhs->data;
+            return this->value == rhs->value;
         else
             return false;
     }
-    // Forward the serialization methods to the already-implemented ones for std::vector
+    // Serialization support; very simple since there is only one field
     std::size_t bytes_size() const {
-        return mutils::bytes_size(type) + mutils::bytes_size(data);
+        return mutils::bytes_size(type) + mutils::bytes_size(value);
     }
     std::size_t to_bytes(uint8_t* buffer) const {
         std::size_t bytes_written = mutils::to_bytes(type, buffer);
-        return bytes_written + mutils::to_bytes(data, buffer + bytes_written);
+        return bytes_written + mutils::to_bytes(value, buffer + bytes_written);
     }
     void post_object(const std::function<void(uint8_t const* const, std::size_t)>& f) const {
         mutils::post_object(f, type);
-        mutils::post_object(f, data);
+        mutils::post_object(f, value);
     }
     static std::unique_ptr<AggregationMessageValue<RecordType>> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer) {
-        /*"Skip past the MessageBodyType, then take the deserialized vector
+        /*"Skip past the MessageBodyType, then take the deserialized value
          * and wrap it in a new AggregationMessageValue"*/
         return std::make_unique<AggregationMessageValue<RecordType>>(
-            *mutils::from_bytes<std::vector<RecordType>>(m, buffer + sizeof(type)));
+            *mutils::from_bytes<RecordType>(m, buffer + sizeof(type)));
     }
 };
 
@@ -102,37 +74,24 @@ std::ostream& operator<<(std::ostream& out, const AggregationMessageValue<Record
  */
 template <typename RecordType>
 class AggregationMessage : public Message {
-private:
-    int num_contributors;
-
 public:
     static const constexpr MessageType type = MessageType::AGGREGATION;
     using body_type = AggregationMessageValue<RecordType>;
+    int num_contributors;
     int query_num;
     AggregationMessage() : Message(0, nullptr), num_contributors(0), query_num(0) {}
-    AggregationMessage(const int sender_id, const int query_num, std::shared_ptr<AggregationMessageValue<RecordType>> value)
-        : Message(sender_id, value), num_contributors(1), query_num(query_num) {}
+    AggregationMessage(int sender_id, int query_num, std::shared_ptr<AggregationMessageValue<RecordType>> value, int num_contributors)
+        : Message(sender_id, value), num_contributors(num_contributors), query_num(query_num) {}
     virtual ~AggregationMessage() = default;
     std::shared_ptr<body_type> get_body() { return std::static_pointer_cast<body_type>(body); };
     const std::shared_ptr<body_type> get_body() const { return std::static_pointer_cast<body_type>(body); };
-    void add_value(const RecordType& value, int num_contributors);
-    void add_values(const std::vector<RecordType>& values, const int num_contributors);
-    int get_num_contributors() const { return num_contributors; }
 
     std::size_t bytes_size() const;
     std::size_t to_bytes(uint8_t* buffer) const;
     void post_object(const std::function<void(uint8_t const* const, std::size_t)>&) const;
     static std::unique_ptr<AggregationMessage> from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer);
 
-    friend bool operator==(const AggregationMessage& lhs, const AggregationMessage& rhs) {
-        return lhs.num_contributors == rhs.num_contributors && lhs.query_num == rhs.query_num && (*lhs.body) == (*rhs.body);
-    }
     friend struct std::hash<AggregationMessage>;
-
-private:
-    // All-member constructor used only be deserialization
-    AggregationMessage(const int sender_id, const int query_num,
-                       std::shared_ptr<AggregationMessageValue<RecordType>> value, const int num_contributors) : Message(sender_id, value), num_contributors(num_contributors), query_num(query_num) {}
 };
 
 template <typename RecordType>
@@ -152,13 +111,9 @@ namespace std {
 template <typename RecordType>
 struct hash<adq::messaging::AggregationMessageValue<RecordType>> {
     size_t operator()(const adq::messaging::AggregationMessageValue<RecordType>& input) const {
-        using adq::util::hash_combine;
-
-        std::size_t seed = input.size();
-        for(const auto& i : input) {
-            hash_combine(seed, i);
-        }
-        return seed;
+        // Just hash the single member of the struct
+        std::hash<RecordType> hasher;
+        return hasher(input.value);
     }
 };
 
