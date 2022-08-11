@@ -58,7 +58,7 @@ void TreeAggregationState<RecordType>::compute_and_send_aggregate(
     // Use the DataSource's aggregation function to combine all the accepted values with the intermediate value, if any
     std::vector<RecordType> values_to_aggregate;
     for(const auto& proxy_value : accepted_proxy_values) {
-        values_to_aggregate.emplace_back(proxy_value->value.value);
+        values_to_aggregate.emplace_back(proxy_value->value_tuple.value);
     }
     if(aggregation_intermediate->num_contributors > 0) {
         values_to_aggregate.emplace_back(aggregation_intermediate->get_body()->value);

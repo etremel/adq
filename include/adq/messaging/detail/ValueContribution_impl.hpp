@@ -17,7 +17,7 @@ template <typename RecordType>
 std::size_t ValueContribution<RecordType>::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     bytes_written += mutils::to_bytes(type, buffer);
-    bytes_written += mutils::to_bytes(value, buffer + bytes_written);
+    bytes_written += mutils::to_bytes(value_tuple, buffer + bytes_written);
     std::memcpy(buffer + bytes_written, signature.data(), signature.size() * sizeof(SignatureArray::value_type));
     bytes_written += signature.size() * sizeof(SignatureArray::value_type);
     return bytes_written;
@@ -26,13 +26,13 @@ std::size_t ValueContribution<RecordType>::to_bytes(uint8_t* buffer) const {
 template <typename RecordType>
 void ValueContribution<RecordType>::post_object(const std::function<void(const uint8_t* const, std::size_t)>& consumer_function) const {
     mutils::post_object(consumer_function, type);
-    mutils::post_object(consumer_function, value);
+    mutils::post_object(consumer_function, value_tuple);
     consumer_function((const uint8_t*)signature.data(), signature.size() * sizeof(SignatureArray::value_type));
 }
 
 template <typename RecordType>
 std::size_t ValueContribution<RecordType>::bytes_size() const {
-    return mutils::bytes_size(type) + mutils::bytes_size(value) +
+    return mutils::bytes_size(type) + mutils::bytes_size(value_tuple) +
            (signature.size() * sizeof(SignatureArray::value_type));
 }
 

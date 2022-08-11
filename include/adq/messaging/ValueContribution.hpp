@@ -24,17 +24,17 @@ namespace messaging {
 template <typename RecordType>
 struct ValueContribution : public MessageBody {
     static const constexpr MessageBodyType type = MessageBodyType::VALUE_CONTRIBUTION;
-    ValueTuple<RecordType> value;
+    ValueTuple<RecordType> value_tuple;
     SignatureArray signature;
-    ValueContribution(const ValueTuple<RecordType>& value) : value(value) {
+    ValueContribution(const ValueTuple<RecordType>& value) : value_tuple(value) {
         signature.fill(0);
     }
-    ValueContribution(const ValueTuple<RecordType>& value, const SignatureArray& signature) : value(value), signature(signature) {}
+    ValueContribution(const ValueTuple<RecordType>& value, const SignatureArray& signature) : value_tuple(value), signature(signature) {}
     virtual ~ValueContribution() = default;
 
     inline bool operator==(const MessageBody& _rhs) const {
         if(auto* rhs = dynamic_cast<const ValueContribution<RecordType>*>(&_rhs))
-            return this->value == rhs->value && this->signature == rhs->signature;
+            return this->value_tuple == rhs->value_tuple && this->signature == rhs->signature;
         else
             return false;
     }
@@ -48,7 +48,7 @@ struct ValueContribution : public MessageBody {
 
 template <typename RecordType>
 std::ostream& operator<<(std::ostream& stream, const ValueContribution<RecordType>& vc) {
-    return stream << "{ValueContribution: " << vc.value << "}";
+    return stream << "{ValueContribution: " << vc.value_tuple << "}";
 }
 
 }  // namespace messaging
@@ -62,7 +62,7 @@ struct hash<adq::messaging::ValueContribution<RecordType>> {
     size_t operator()(const adq::messaging::ValueContribution<RecordType>& input) const {
         size_t result = 1;
         adq::util::hash_combine(result, input.signature);
-        adq::util::hash_combine(result, input.value);
+        adq::util::hash_combine(result, input.value_tuple);
         return result;
     }
 };

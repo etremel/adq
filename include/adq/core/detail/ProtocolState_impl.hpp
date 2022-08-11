@@ -140,9 +140,9 @@ template <typename RecordType>
 void ProtocolState<RecordType>::handle_shuffle_phase_message(const messaging::OverlayMessage& message) {
     // Drop messages that are received in the wrong phase (i.e. not ValueContributions) or have the wrong round number
     if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution<RecordType>>(message.body)) {
-        if(contribution->value.query_num == my_contribution->query_num) {
+        if(contribution->value_tuple.query_num == my_contribution->query_num) {
             // Verify the owner's signature
-            if(crypto.rsa_verify(contribution->value, contribution->signature)) {
+            if(crypto.rsa_verify(contribution->value_tuple, contribution->signature)) {
                 proxy_values.emplace(contribution);
                 logger->trace("Meter {} received proxy value: {}", meter_id, *contribution);
             }
@@ -197,12 +197,12 @@ void ProtocolState<RecordType>::send_aggregate_if_done() {
 template <typename RecordType>
 void ProtocolState<RecordType>::encrypted_multicast_to_proxies(const std::shared_ptr<messaging::ValueContribution<RecordType>>& contribution) {
     // Find independent paths starting at round 0
-    auto proxy_paths = util::find_paths(meter_id, contribution->value.proxies, num_meters, 0);
+    auto proxy_paths = util::find_paths(meter_id, contribution->value_tuple.proxies, num_meters, 0);
     logger->trace("Client {} picked these proxy paths: {}", meter_id, proxy_paths);
     for(const auto& proxy_path : proxy_paths) {
         // Create an encrypted onion for this path and send it
         outgoing_messages.emplace_back(messaging::build_encrypted_onion(proxy_path,
-                                                                        contribution, contribution->value.query_num, crypto));
+                                                                        contribution, contribution->value_tuple.query_num, crypto));
     }
     // Start the overlay by ending "round -1", which will send the messages at the start of round 0
     end_overlay_round();
@@ -222,9 +222,9 @@ void ProtocolState<RecordType>::end_overlay_round() {
             signed_value->signatures[meter_id].fill(0);
             crypto.rsa_sign(*proxy_value, signed_value->signatures[meter_id]);
 
-            std::vector<int> other_proxies(proxy_value->value.proxies.size() - 1);
-            std::remove_copy(proxy_value->value.proxies.begin(),
-                             proxy_value->value.proxies.end(), other_proxies.begin(), meter_id);
+            std::vector<int> other_proxies(proxy_value->value_tuple.proxies.size() - 1);
+            std::remove_copy(proxy_value->value_tuple.proxies.begin(),
+                             proxy_value->value_tuple.proxies.end(), other_proxies.begin(), meter_id);
             // Find paths that start at the next round - we send before receive, so we've already sent messages for the current round
             auto proxy_paths = util::find_paths(meter_id, other_proxies, num_meters, overlay_round + 1);
             for(const auto& proxy_path : proxy_paths) {
