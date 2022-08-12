@@ -163,7 +163,7 @@ public:
      * @param recipient_id The ID of the recipient.
      * @return true if the send was successful, false if a connection could not be made.
      */
-    bool send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id);
+    bool send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage<RecordType>>>& messages, const int recipient_id);
     /**
      * Sends an AggregationMessage over the network to another meter (or the
      * utility), identified by its ID.
@@ -178,23 +178,23 @@ public:
      * @param recipient_id The ID of the recipient
      * @return true if the send was successful, false if a connection could not be made.
      */
-    bool send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id);
+    bool send(const std::shared_ptr<messaging::PingMessage<RecordType>>& message, const int recipient_id);
     /** Sends a signature request message to the query server. */
-    bool send(const std::shared_ptr<messaging::SignatureRequest>& message);
+    bool send(const std::shared_ptr<messaging::SignatureRequest<RecordType>>& message);
     /**
      * Sends a query request message to the client with the specified ID. This should only
      * be used by the query server.
      * @param message The message to send
      * @param recipient_id The ID of the recipient
      */
-    void send(const std::shared_ptr<messaging::QueryRequest>& message, const int recipient_id);
+    void send(const std::shared_ptr<messaging::QueryRequest<RecordType>>& message, const int recipient_id);
     /**
      * Sends a signature response (blindly signed value) back to a client. This should only
      * be used by teh query server.
      * @param message The message to send
      * @param recipient_id The ID of the recipient
      */
-    void send(const std::shared_ptr<messaging::SignatureResponse>& message, const int recipient_id);
+    void send(const std::shared_ptr<messaging::SignatureResponse<RecordType>>& message, const int recipient_id);
 };
 }  // namespace adq
 

@@ -124,39 +124,39 @@ void NetworkManager<RecordType>::receive_message(const std::vector<uint8_t>& mes
         MessageType message_type = ((MessageType*)(buffer))[0];
         // Deserialize the correct message subclass based on the type, and call the correct handler
         switch(message_type) {
-            case OverlayTransportMessage::type: {
-                std::shared_ptr<OverlayTransportMessage> message(mutils::from_bytes<OverlayTransportMessage>(nullptr, buffer));
+            case OverlayTransportMessage<RecordType>::type: {
+                std::shared_ptr<OverlayTransportMessage<RecordType>> message(mutils::from_bytes<OverlayTransportMessage<RecordType>>(nullptr, buffer));
                 buffer += mutils::bytes_size(*message);
                 message_handler->handle_message(message);
                 break;
             }
-            case PingMessage::type: {
-                std::shared_ptr<PingMessage> message(mutils::from_bytes<PingMessage>(nullptr, buffer));
+            case PingMessage<RecordType>::type: {
+                std::shared_ptr<PingMessage<RecordType>> message(mutils::from_bytes<PingMessage<RecordType>>(nullptr, buffer));
                 buffer += mutils::bytes_size(*message);
                 message_handler->handle_message(message);
                 break;
             }
-            case MessageType::AGGREGATION: {
+            case AggregationMessage<RecordType>::type: {
                 std::shared_ptr<AggregationMessage<RecordType>> message(mutils::from_bytes<AggregationMessage<RecordType>>(nullptr, buffer));
                 buffer += mutils::bytes_size(*message);
                 message_handler->handle_message(message);
                 break;
             }
-            case QueryRequest::type: {
-                std::shared_ptr<QueryRequest> message(mutils::from_bytes<QueryRequest>(nullptr, buffer));
+            case QueryRequest<RecordType>::type: {
+                std::shared_ptr<QueryRequest<RecordType>> message(mutils::from_bytes<QueryRequest<RecordType>>(nullptr, buffer));
                 buffer += mutils::bytes_size(*message);
                 std::cout << "Received a QueryRequest: " << *message << std::endl;
                 message_handler->handle_message(message);
                 break;
             }
-            case SignatureRequest::type: {
-                std::shared_ptr<SignatureRequest> message(mutils::from_bytes<SignatureRequest>(nullptr, buffer));
+            case SignatureRequest<RecordType>::type: {
+                std::shared_ptr<SignatureRequest<RecordType>> message(mutils::from_bytes<SignatureRequest<RecordType>>(nullptr, buffer));
                 buffer += mutils::bytes_size(*message);
                 message_handler->handle_message(message);
                 break;
             }
-            case SignatureResponse::type: {
-                std::shared_ptr<SignatureResponse> message(mutils::from_bytes<SignatureResponse>(nullptr, buffer));
+            case SignatureResponse<RecordType>::type: {
+                std::shared_ptr<SignatureResponse<RecordType>> message(mutils::from_bytes<SignatureResponse<RecordType>>(nullptr, buffer));
                 buffer += mutils::bytes_size(*message);
                 message_handler->handle_message(message);
                 break;
@@ -178,7 +178,7 @@ void NetworkManager<RecordType>::initialize_socket(int recipient_id) {
 }
 
 template <typename RecordType>
-bool NetworkManager<RecordType>::send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage>>& messages, const int recipient_id) {
+bool NetworkManager<RecordType>::send(const std::list<std::shared_ptr<messaging::OverlayTransportMessage<RecordType>>>& messages, const int recipient_id) {
     // Construct a new socket for this node if there is not one already in the map
     initialize_socket(recipient_id);
     std::size_t send_size = mutils::bytes_size(messages.size());
@@ -240,7 +240,7 @@ void NetworkManager<RecordType>::handle_write_complete(int recipient_id, const a
 }
 
 template <typename RecordType>
-bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::PingMessage>& message, const int recipient_id) {
+bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::PingMessage<RecordType>>& message, const int recipient_id) {
     initialize_socket(recipient_id);
     // Serialize the ping message
     const std::size_t num_messages = 1;
@@ -263,7 +263,7 @@ bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::PingMessa
     }
 }
 template <typename RecordType>
-bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::SignatureRequest>& message) {
+bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::SignatureRequest<RecordType>>& message) {
     initialize_socket(UTILITY_NODE_ID);
     std::size_t send_size = mutils::bytes_size(*message);
     // Serialize the message into a buffer that is stored on the heap, so it will remain in scope during the asynchronous write
@@ -281,7 +281,7 @@ bool NetworkManager<RecordType>::send(const std::shared_ptr<messaging::Signature
     return true;
 }
 template <typename RecordType>
-void NetworkManager<RecordType>::send(const std::shared_ptr<messaging::QueryRequest>& message, const int recipient_id) {
+void NetworkManager<RecordType>::send(const std::shared_ptr<messaging::QueryRequest<RecordType>>& message, const int recipient_id) {
     initialize_socket(recipient_id);
     const std::size_t num_messages = 1;
     std::size_t send_size = mutils::bytes_size(num_messages) + mutils::bytes_size(*message);
@@ -298,7 +298,7 @@ void NetworkManager<RecordType>::send(const std::shared_ptr<messaging::QueryRequ
                       });
 }
 template <typename RecordType>
-void NetworkManager<RecordType>::send(const std::shared_ptr<messaging::SignatureResponse>& message, const int recipient_id) {
+void NetworkManager<RecordType>::send(const std::shared_ptr<messaging::SignatureResponse<RecordType>>& message, const int recipient_id) {
     // Exactly the same method as send(QueryRequest), just with a different argument type
     initialize_socket(recipient_id);
     const std::size_t num_messages = 1;

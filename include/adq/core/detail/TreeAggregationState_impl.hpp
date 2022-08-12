@@ -34,7 +34,8 @@ bool TreeAggregationState<RecordType>::done_receiving_from_children() const {
 }
 
 template <typename RecordType>
-void TreeAggregationState<RecordType>::handle_message(const messaging::AggregationMessage<RecordType>& message, DataSource<RecordType>& data_source) {
+void TreeAggregationState<RecordType>::handle_message(const messaging::AggregationMessage<RecordType>& message,
+                                                      DataSource<RecordType>& data_source) {
     if(aggregation_intermediate->num_contributors == 0) {
         // We have not yet received any values, so no aggregation is necessary; just store the incoming value
         aggregation_intermediate->get_body()->value = message.get_body()->value;

@@ -23,7 +23,7 @@ public:
     /**
      * Handles an Overlay message received from a query client or server.
      */
-    virtual void handle_message(std::shared_ptr<messaging::OverlayTransportMessage> message) = 0;
+    virtual void handle_message(std::shared_ptr<messaging::OverlayTransportMessage<RecordType>> message) = 0;
     /**
      * Handles an aggregation message received from a query client.
      */
@@ -31,19 +31,19 @@ public:
     /**
      * Handles a ping message received from a query client.
      */
-    virtual void handle_message(std::shared_ptr<messaging::PingMessage> message) = 0;
+    virtual void handle_message(std::shared_ptr<messaging::PingMessage<RecordType>> message) = 0;
     /**
      * Handles a query request message from the query server (by starting the data collection protocol)
      */
-    virtual void handle_message(std::shared_ptr<messaging::QueryRequest> message) = 0;
+    virtual void handle_message(std::shared_ptr<messaging::QueryRequest<RecordType>> message) = 0;
     /**
      * Handles a signature-response message received from the query server.
      */
-    virtual void handle_message(std::shared_ptr<messaging::SignatureResponse> message) = 0;
+    virtual void handle_message(std::shared_ptr<messaging::SignatureResponse<RecordType>> message) = 0;
     /**
      * Handles a signature-request message received from a query client.
      */
-    virtual void handle_message(std::shared_ptr<messaging::SignatureRequest> message) = 0;
+    virtual void handle_message(std::shared_ptr<messaging::SignatureRequest<RecordType>> message) = 0;
 
     virtual ~MessageConsumer() = default;
 };

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <ostream>
-#include <cstddef>
 
 #include "Message.hpp"
 #include "MessageType.hpp"
@@ -17,28 +17,38 @@ namespace messaging {
  * message is sent, and "wraps" a body message that may be relayed unchanged
  * over several rounds of messaging.
  */
-class OverlayTransportMessage: public Message {
-    public:
-        static const constexpr MessageType type = MessageType::OVERLAY;
-        /** An OverlayTransportMessage may contain an OverlayMessage or a
-         *  subclass of OverlayMessage, but OverlayMessage will at least be
-         *  a valid cast target. */
-        using body_type = OverlayMessage;
-        int sender_round;
-        bool is_final_message;
-        OverlayTransportMessage(const int sender_id, const int sender_round,
-                const bool is_final_message, std::shared_ptr<OverlayMessage> wrapped_message) :
-            Message(sender_id, wrapped_message), sender_round(sender_round), is_final_message(is_final_message) {};
-        virtual ~OverlayTransportMessage() = default;
+template <typename RecordType>
+class OverlayTransportMessage : public Message<RecordType> {
+public:
+    static const constexpr MessageType type = MessageType::OVERLAY;
+    /** An OverlayTransportMessage may contain an OverlayMessage or a
+     *  subclass of OverlayMessage, but OverlayMessage will at least be
+     *  a valid cast target. */
+    using body_type = OverlayMessage<RecordType>;
+    using Message<RecordType>::body;
+    int sender_round;
+    bool is_final_message;
+    OverlayTransportMessage(const int sender_id, const int sender_round,
+                            const bool is_final_message,
+                            std::shared_ptr<OverlayMessage<RecordType>> wrapped_message)
+        : Message<RecordType>(sender_id, wrapped_message),
+          sender_round(sender_round),
+          is_final_message(is_final_message){};
+    virtual ~OverlayTransportMessage() = default;
+    /** Returns a pointer to the message body cast to the correct type for this message */
+    std::shared_ptr<body_type> get_body() { return std::static_pointer_cast<body_type>(body); };
+    const std::shared_ptr<body_type> get_body() const { return std::static_pointer_cast<body_type>(body); };
 
-        std::size_t bytes_size() const;
-        std::size_t to_bytes(uint8_t* buffer) const;
-        void post_object(const std::function<void (uint8_t const * const,std::size_t)>&) const;
-        static std::unique_ptr<OverlayTransportMessage> from_bytes(mutils::DeserializationManager* m, uint8_t const * buffer);
+    std::size_t bytes_size() const;
+    std::size_t to_bytes(uint8_t* buffer) const;
+    void post_object(const std::function<void(uint8_t const* const, std::size_t)>&) const;
+    static std::unique_ptr<OverlayTransportMessage<RecordType>> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 };
 
-std::ostream& operator<< (std::ostream& out, const OverlayTransportMessage& message);
-
+template <typename RecordType>
+std::ostream& operator<<(std::ostream& out, const OverlayTransportMessage<RecordType>& message);
 
 } /* namespace messaging */
-} /* namespace psm */
+}  // namespace adq
+
+#include "detail/OverlayTransportMessage_impl.hpp"

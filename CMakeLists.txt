@@ -45,7 +45,7 @@ add_subdirectory(apps)
 
 add_library(adq SHARED
     $<TARGET_OBJECTS:core>
-    $<TARGET_OBJECTS:messaging>
+    # $<TARGET_OBJECTS:messaging>
     $<TARGET_OBJECTS:mutils-serialization>
     $<TARGET_OBJECTS:openssl_wrapper>
     $<TARGET_OBJECTS:util>)

@@ -74,7 +74,7 @@ public:
      * The QueryClient shares ownership of the message, so it will stay alive
      * until QueryClient is done handling it.
      */
-    virtual void handle_message(std::shared_ptr<messaging::OverlayTransportMessage> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::OverlayTransportMessage<RecordType>> message) override;
     /**
      * Handles an aggregation message received from another client. This is a
      * callback for NetworkManager to invoke when a message arrives.
@@ -84,23 +84,23 @@ public:
      * Handles a ping message received from another client. This is a callback
      * for NetworkManager to invoke when the message arrives.
      */
-    virtual void handle_message(std::shared_ptr<messaging::PingMessage> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::PingMessage<RecordType>> message) override;
     /**
      * Starts the data collection protocol. This is a callback for NetworkManager
      * to invoke when a message arrives.
      * @param message The query request message received from the utility
      */
-    virtual void handle_message(std::shared_ptr<messaging::QueryRequest> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::QueryRequest<RecordType>> message) override;
     /**
      * Handles a signature-response message received from the utility. This is
      * a callback for NetworkManager to invoke when the message arrives.
      */
-    virtual void handle_message(std::shared_ptr<messaging::SignatureResponse> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::SignatureResponse<RecordType>> message) override;
     /**
      * Handler for signature-request messages; they are ignored since only the
      * query server should receive signature-request messages.
      */
-    virtual void handle_message(std::shared_ptr<messaging::SignatureRequest> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::SignatureRequest<RecordType>> message) override;
 
     /** Starts the client, which will continuously wait for messages and
      * respond to them as they arrive. This function call never returns. */

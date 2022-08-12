@@ -15,8 +15,13 @@ namespace messaging {
  * A simple MessageBody that's just an array of bytes. Used for encrypted message
  * bodies that must be decrypted by CryptoLibrary before they can be deserialized
  * into distinct data types. This wraps a std::vector in an object of type MessageBody
+ *
+ * @tparam RecordType The type of data being collected by queries. This parameter
+ * is ignored by ByteBody and has no effect, but it's required in order to inherit
+ * from MessageBody<RecordType>
  */
-class ByteBody : public MessageBody {
+template <typename RecordType>
+class ByteBody : public MessageBody<RecordType> {
 private:
     std::vector<uint8_t> bytes;
 
@@ -35,7 +40,7 @@ public:
 
     ByteBody& operator=(const ByteBody& other);
     ByteBody& operator=(ByteBody&& other);
-    virtual bool operator==(const MessageBody& rhs) const;
+    virtual bool operator==(const MessageBody<RecordType>& rhs) const;
 
     /**
      * Returns a pointer to the raw byte array within the ByteBody's
@@ -46,7 +51,7 @@ public:
     /**
      * Returns the size of the byte array
      */
-    decltype(bytes)::size_type size() const noexcept { return bytes.size(); }
+    typename decltype(bytes)::size_type size() const noexcept { return bytes.size(); }
 
     /**
      * Resizes the byte array by forwarding arguments to std::vector::resize
@@ -60,15 +65,30 @@ public:
      */
     operator const std::vector<uint8_t>&() const { return bytes; }
 
-    friend std::ostream& operator<<(std::ostream& stream, const ByteBody& v);
+    // Note: friend functions of templates must be defined inline
+    friend std::ostream& operator<<(std::ostream& stream, const ByteBody& v) {
+        if(v.size() > 0) {
+            // Print the internal vector in hex format
+            std::ios normal_stream_state(nullptr);
+            normal_stream_state.copyfmt(stream);
+            stream << '[' << std::hex << std::setfill('0') << std::setw(2) << std::right;
+            std::copy(v.bytes.begin(), v.bytes.end(), std::ostream_iterator<uint8_t>(stream, ", "));
+            stream << "\b\b]";
+            stream.copyfmt(normal_stream_state);
+        }
+        return stream;
+    }
 
     std::size_t bytes_size() const;
     std::size_t to_bytes(uint8_t* buffer) const;
     void post_object(const std::function<void(uint8_t const* const, std::size_t)>& f) const;
-    static std::unique_ptr<ByteBody> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
+    static std::unique_ptr<ByteBody<RecordType>> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 };
 
-std::ostream& operator<<(std::ostream& stream, const ByteBody& v);
+// template <typename RecordType>
+// std::ostream& operator<<(std::ostream& stream, const ByteBody<RecordType>& v);
 
 }  // namespace messaging
 }  // namespace adq
+
+#include "detail/ByteBody_impl.hpp"

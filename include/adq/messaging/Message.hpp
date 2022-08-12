@@ -17,12 +17,17 @@ namespace messaging {
 /**
  * Base class for all messages sent between devices in this system.
  * Defines the header fields that are common to all messages.
+ *
+ * @tparam RecordType The data type being collected by queries in this
+ * instantiation of the query system; needed because some types of
+ * message body will contain instances of this data type.
  */
+template <typename RecordType>
 class Message : public mutils::ByteRepresentable {
 public:
     int sender_id;
-    std::shared_ptr<MessageBody> body;
-    Message(const int sender_id, std::shared_ptr<MessageBody> body) : sender_id(sender_id), body(std::move(body)){};
+    std::shared_ptr<MessageBody<RecordType>> body;
+    Message(const int sender_id, std::shared_ptr<MessageBody<RecordType>> body) : sender_id(sender_id), body(std::move(body)){};
     virtual ~Message() = default;
     // Common serialization code for the superclass header fields.
     // These functions DO NOT include a MessageType field, which must be added by a subclass.
@@ -31,9 +36,11 @@ public:
     void post_object(const std::function<void(uint8_t const* const, std::size_t)>&) const;
 
     // Calls a subclass from_bytes
-    static std::unique_ptr<Message> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
+    static std::unique_ptr<Message<RecordType>> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 };
 
 }  // namespace messaging
 
 }  // namespace adq
+
+#include "detail/Message_impl.hpp"

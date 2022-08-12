@@ -1,8 +1,8 @@
 #pragma once
 
+#include "ByteBody.hpp"
 #include "Message.hpp"
 #include "MessageType.hpp"
-#include "ByteBody.hpp"
 
 #include <cstdint>
 #include <cstring>
@@ -12,40 +12,38 @@
 namespace adq {
 namespace messaging {
 
-class SignatureRequest : public Message {
+/**
+ * Trivial subclass of Message that specializes its body to be a ByteBody.
+ * @tparam RecordType The data type being collected in queries in this system.
+ * This parameter is ignored by SignatureResponse and has no effect, but it's
+ * required in order to inherit from Message<RecordType>
+ */
+template<typename RecordType>
+class SignatureRequest : public Message<RecordType> {
 public:
     static const constexpr MessageType type = MessageType::SIGNATURE_REQUEST;
-    using body_type = ByteBody;
-    SignatureRequest(const int sender_id, std::shared_ptr<ByteBody> encrypted_value)
-        : Message(sender_id, std::move(encrypted_value)) {}
+    using body_type = ByteBody<RecordType>;
+    // Tell C++ I want to use inheritance
+    using Message<RecordType>::body;
+
+    SignatureRequest(const int sender_id, std::shared_ptr<ByteBody<RecordType>> encrypted_value)
+        : Message<RecordType>(sender_id, std::move(encrypted_value)) {}
     virtual ~SignatureRequest() = default;
 
-    // Trivial extension of Message, just call superclass's serialization methods
-    std::size_t bytes_size() const {
-        return mutils::bytes_size(type) + Message::bytes_size();
-    }
-    std::size_t to_bytes(uint8_t* buffer) const {
-        std::size_t bytes_written = mutils::to_bytes(type, buffer);
-        bytes_written += Message::to_bytes(buffer + bytes_written);
-        return bytes_written;
-    }
-    void post_object(const std::function<void(const uint8_t* const, std::size_t)>& function) const {
-        mutils::post_object(function, type);
-        Message::post_object(function);
-    }
-    static std::unique_ptr<SignatureRequest> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer) {
-        std::size_t bytes_read = 0;
-        MessageType message_type;
-        std::memcpy(&message_type, buffer + bytes_read, sizeof(MessageType));
-        bytes_read += sizeof(MessageType);
+    /** Returns a pointer to the message body cast to the correct type for this message */
+    std::shared_ptr<body_type> get_body() { return std::static_pointer_cast<body_type>(body); };
+    const std::shared_ptr<body_type> get_body() const { return std::static_pointer_cast<body_type>(body); };
 
-        int sender_id;
-        std::memcpy(&sender_id, buffer + bytes_read, sizeof(sender_id));
-        bytes_read += sizeof(sender_id);
-        std::shared_ptr<body_type> body_shared = mutils::from_bytes<body_type>(m, buffer + bytes_read);
-        return std::make_unique<SignatureRequest>(sender_id, body_shared);
-    }
+    std::size_t bytes_size() const;
+    std::size_t to_bytes(uint8_t* buffer) const;
+    void post_object(const std::function<void(const uint8_t* const, std::size_t)>& function) const;
+    static std::unique_ptr<SignatureRequest<RecordType>> from_bytes(mutils::DeserializationManager* m, uint8_t const* buffer);
 };
+
+template<typename RecordType>
+std::ostream& operator<<(std::ostream& out, const SignatureRequest<RecordType>& message);
 
 }  // namespace messaging
 }  // namespace adq
+
+#include "detail/SignatureRequest_impl.hpp"

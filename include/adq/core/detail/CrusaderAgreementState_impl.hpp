@@ -17,8 +17,8 @@
 namespace adq {
 
 template <typename RecordType>
-std::vector<std::shared_ptr<messaging::OverlayMessage>> CrusaderAgreementState<RecordType>::finish_phase_1(int current_round) {
-    std::vector<std::shared_ptr<messaging::OverlayMessage>> accept_messages;
+std::vector<std::shared_ptr<messaging::OverlayMessage<RecordType>>> CrusaderAgreementState<RecordType>::finish_phase_1(int current_round) {
+    std::vector<std::shared_ptr<messaging::OverlayMessage<RecordType>>> accept_messages;
     for(const auto& signed_value_entry : signed_proxy_values) {
         if(signed_value_entry.second.signatures.size() < (unsigned)log2n + 1) {
             // Reject values without enough signatures
@@ -33,7 +33,7 @@ std::vector<std::shared_ptr<messaging::OverlayMessage>> CrusaderAgreementState<R
                          signed_value_entry.first->value_tuple.proxies.end(), other_proxies.begin(), node_id);
         auto proxy_paths = util::find_paths(node_id, other_proxies, num_nodes, current_round + 1);
         for(const auto& proxy_path : proxy_paths) {
-            auto accept_message = std::make_shared<messaging::PathOverlayMessage>(
+            auto accept_message = std::make_shared<messaging::PathOverlayMessage<RecordType>>(
                 query_num, proxy_path, signed_accepted_value);
             crypto_library.rsa_encrypt(*accept_message, proxy_path.back());
             accept_messages.emplace_back(std::move(accept_message));
@@ -58,10 +58,10 @@ util::unordered_ptr_set<messaging::ValueContribution<RecordType>> CrusaderAgreem
 }
 
 template <typename RecordType>
-void CrusaderAgreementState<RecordType>::handle_message(const messaging::OverlayMessage& message) {
-    if(auto signed_value = std::dynamic_pointer_cast<messaging::SignedValue<RecordType>>(message.body)) {
+void CrusaderAgreementState<RecordType>::handle_message(const messaging::OverlayMessage<RecordType>& message) {
+    if(auto signed_value = std::dynamic_pointer_cast<messaging::SignedValue<RecordType>>(message.enclosed_body)) {
         handle_phase_1_message(*signed_value);
-    } else if(auto agreement_value = std::dynamic_pointer_cast<messaging::AgreementValue<RecordType>>(message.body)) {
+    } else if(auto agreement_value = std::dynamic_pointer_cast<messaging::AgreementValue<RecordType>>(message.enclosed_body)) {
         handle_phase_2_message(*agreement_value);
     }
 }

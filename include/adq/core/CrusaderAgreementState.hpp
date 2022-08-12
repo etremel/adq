@@ -62,7 +62,7 @@ public:
      * @return A list of accept messages (by shared_ptr) to send to other nodes
      *         in this node's agreement group
      */
-    std::vector<std::shared_ptr<messaging::OverlayMessage>> finish_phase_1(int current_round);
+    std::vector<std::shared_ptr<messaging::OverlayMessage<RecordType>>> finish_phase_1(int current_round);
     /**
      * Completes phase 2 of agreement, determining which values to accept.
      * @return The set of accepted values (by shared_ptr).
@@ -75,7 +75,7 @@ public:
      * {@code AgreementValue}).
      * @param message A message received during Crusader Agreement.
      */
-    void handle_message(const messaging::OverlayMessage& message);
+    void handle_message(const messaging::OverlayMessage<RecordType>& message);
 
 private:
     /**

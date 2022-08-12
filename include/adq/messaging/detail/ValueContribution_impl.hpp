@@ -14,6 +14,14 @@ template <typename RecordType>
 const constexpr MessageBodyType ValueContribution<RecordType>::type;
 
 template <typename RecordType>
+bool ValueContribution<RecordType>::operator==(const MessageBody<RecordType>& _rhs) const {
+    if(auto* rhs = dynamic_cast<const ValueContribution<RecordType>*>(&_rhs))
+        return this->value_tuple == rhs->value_tuple && this->signature == rhs->signature;
+    else
+        return false;
+}
+
+template <typename RecordType>
 std::size_t ValueContribution<RecordType>::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     bytes_written += mutils::to_bytes(type, buffer);

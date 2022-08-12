@@ -1,4 +1,6 @@
-#include "adq/messaging/PingMessage.hpp"
+#pragma once
+
+#include "../PingMessage.hpp"
 
 #include <cassert>
 #include <cstddef>
@@ -8,16 +10,19 @@
 namespace adq {
 namespace messaging {
 
-const constexpr MessageType PingMessage::type;
+template <typename RecordType>
+const constexpr MessageType PingMessage<RecordType>::type;
 
-std::size_t PingMessage::bytes_size() const {
+template <typename RecordType>
+std::size_t PingMessage<RecordType>::bytes_size() const {
     return mutils::bytes_size(type) +
            mutils::bytes_size(sender_id) +
            mutils::bytes_size(is_response);
 }
 
 // This completely overrides Message::to_bytes, since PingMessage ignores the body field
-std::size_t PingMessage::to_bytes(uint8_t* buffer) const {
+template <typename RecordType>
+std::size_t PingMessage<RecordType>::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = 0;
     std::memcpy(buffer + bytes_written, &type, sizeof(MessageType));
     bytes_written += sizeof(MessageType);
@@ -28,13 +33,15 @@ std::size_t PingMessage::to_bytes(uint8_t* buffer) const {
     return bytes_written;
 }
 
-void PingMessage::post_object(const std::function<void(const uint8_t*, std::size_t)>& consumer) const {
+template <typename RecordType>
+void PingMessage<RecordType>::post_object(const std::function<void(const uint8_t*, std::size_t)>& consumer) const {
     mutils::post_object(consumer, type);
     mutils::post_object(consumer, sender_id);
     mutils::post_object(consumer, is_response);
 }
 
-std::unique_ptr<PingMessage> PingMessage::from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) {
+template <typename RecordType>
+std::unique_ptr<PingMessage<RecordType>> PingMessage<RecordType>::from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) {
     std::size_t bytes_read = 0;
     MessageType message_type;
     std::memcpy(&message_type, buffer + bytes_read, sizeof(MessageType));
@@ -46,10 +53,11 @@ std::unique_ptr<PingMessage> PingMessage::from_bytes(mutils::DeserializationMana
     bool is_response;
     std::memcpy(&is_response, buffer + bytes_read, sizeof(bool));
     bytes_read += sizeof(bool);
-    return std::make_unique<PingMessage>(sender_id, is_response);
+    return std::make_unique<PingMessage<RecordType>>(sender_id, is_response);
 }
 
-std::ostream& operator<<(std::ostream& out, const PingMessage& message) {
+template <typename RecordType>
+std::ostream& operator<<(std::ostream& out, const PingMessage<RecordType>& message) {
     return out << "Ping from " << message.sender_id << ", is_response = " << std::boolalpha << message.is_response;
 }
 

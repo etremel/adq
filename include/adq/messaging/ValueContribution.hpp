@@ -22,7 +22,7 @@ namespace messaging {
  * an aggregation query.
  */
 template <typename RecordType>
-struct ValueContribution : public MessageBody {
+struct ValueContribution : public MessageBody<RecordType> {
     static const constexpr MessageBodyType type = MessageBodyType::VALUE_CONTRIBUTION;
     ValueTuple<RecordType> value_tuple;
     SignatureArray signature;
@@ -32,12 +32,7 @@ struct ValueContribution : public MessageBody {
     ValueContribution(const ValueTuple<RecordType>& value, const SignatureArray& signature) : value_tuple(value), signature(signature) {}
     virtual ~ValueContribution() = default;
 
-    inline bool operator==(const MessageBody& _rhs) const {
-        if(auto* rhs = dynamic_cast<const ValueContribution<RecordType>*>(&_rhs))
-            return this->value_tuple == rhs->value_tuple && this->signature == rhs->signature;
-        else
-            return false;
-    }
+    bool operator==(const MessageBody<RecordType>& _rhs) const override;
 
     // Serialization support
     std::size_t to_bytes(uint8_t* buffer) const override;

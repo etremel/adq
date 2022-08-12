@@ -45,9 +45,9 @@ private:
     std::set<int> curr_query_meters_signed;
     //"A priority queue of pointers to QueryRequests, ordered by QueryNumGreater"
     using query_priority_queue = std::priority_queue<
-        std::shared_ptr<messaging::QueryRequest>,
-        std::vector<std::shared_ptr<messaging::QueryRequest>>,
-        util::ptr_comparator<messaging::QueryRequest, messaging::QueryNumGreater>>;
+        std::shared_ptr<messaging::QueryRequest<RecordType>>,
+        std::vector<std::shared_ptr<messaging::QueryRequest<RecordType>>>,
+        util::ptr_comparator<messaging::QueryRequest<RecordType>, messaging::QueryNumGreater<RecordType>>>;
     query_priority_queue pending_batch_queries;
 
     static int compute_timeout_time(const int num_meters);
@@ -67,21 +67,21 @@ public:
     virtual void handle_message(std::shared_ptr<messaging::AggregationMessage<RecordType>> message) override;
 
     /** Handles receiving a SignatureRequest from a meter, by signing the requested value. */
-    virtual void handle_message(std::shared_ptr<messaging::SignatureRequest> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::SignatureRequest<RecordType>> message) override;
 
     // Handlers for other messages that a server should not normally receive. These will print a warning and drop the message.
 
-    virtual void handle_message(std::shared_ptr<messaging::OverlayTransportMessage> message) override;
-    virtual void handle_message(std::shared_ptr<messaging::PingMessage> message) override;
-    virtual void handle_message(std::shared_ptr<messaging::QueryRequest> message) override;
-    virtual void handle_message(std::shared_ptr<messaging::SignatureResponse> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::OverlayTransportMessage<RecordType>> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::PingMessage<RecordType>> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::QueryRequest<RecordType>> message) override;
+    virtual void handle_message(std::shared_ptr<messaging::SignatureResponse<RecordType>> message) override;
 
     /**
      * Starts a query by broadcasting a message from the utility to all the meters in the network.
      * Do not call this while an existing query is still in progress, or the existing query's
      * results will be lost.
      */
-    void start_query(std::shared_ptr<messaging::QueryRequest> query);
+    void start_query(std::shared_ptr<messaging::QueryRequest<RecordType>> query);
 
     /**
      * Starts a batch of queries that should be executed in sequence as quickly as possible.
@@ -91,7 +91,7 @@ public:
      * @param queries A batch of queries. The order of this vector will be ignored
      * and the queries will be run in order of query number.
      */
-    void start_queries(const std::list<std::shared_ptr<messaging::QueryRequest>>& queries);
+    void start_queries(const std::list<std::shared_ptr<messaging::QueryRequest<RecordType>>>& queries);
 
     /**
      * Registers a callback function that should be run each time a query completes.

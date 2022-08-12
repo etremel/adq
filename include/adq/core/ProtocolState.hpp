@@ -63,10 +63,10 @@ private:
     template <typename T>
     using ptr_list = std::list<std::shared_ptr<T>>;
 
-    ptr_list<messaging::OverlayTransportMessage> future_overlay_messages;
+    ptr_list<messaging::OverlayTransportMessage<RecordType>> future_overlay_messages;
     ptr_list<messaging::AggregationMessage<RecordType>> future_aggregation_messages;
-    ptr_list<messaging::OverlayMessage> waiting_messages;
-    ptr_list<messaging::OverlayMessage> outgoing_messages;
+    ptr_list<messaging::OverlayMessage<RecordType>> waiting_messages;
+    ptr_list<messaging::OverlayMessage<RecordType>> outgoing_messages;
 
     std::shared_ptr<messaging::ValueTuple<RecordType>> my_contribution;
     /**
@@ -95,11 +95,11 @@ private:
     int agreement_start_round;
     /** The subset of proxy_values accepted after running Crusader Agreement. */
     util::unordered_ptr_set<messaging::ValueContribution<RecordType>> accepted_proxy_values;
-    void handle_agreement_phase_message(const messaging::OverlayMessage& message);
-    void handle_shuffle_phase_message(const messaging::OverlayMessage& message);
+    void handle_agreement_phase_message(const messaging::OverlayMessage<RecordType>& message);
+    void handle_shuffle_phase_message(const messaging::OverlayMessage<RecordType>& message);
 
 public:
-    void handle_signature_response(messaging::SignatureResponse& message);
+    void handle_signature_response(messaging::SignatureResponse<RecordType>& message);
     /* ------ */
 
 private:
@@ -109,7 +109,7 @@ private:
      * then ends the overlay round.
      * @param contribution The ValueContribution to multicast.
      */
-    void encrypted_multicast_to_proxies(const std::shared_ptr<messaging::ValueContribution<RecordType>>& contribution);
+    void encrypted_multicast_to_proxies(std::shared_ptr<messaging::ValueContribution<RecordType>> contribution);
     /**
      * Sends all messages from waiting_messages and outgoing_messages that need
      * to be sent in the current overlay round.
@@ -171,7 +171,7 @@ public:
      * @param contributed_data The data to contribute for this query, supplied
      * by the client.
      */
-    void start_query(std::shared_ptr<messaging::QueryRequest> query_request, const RecordType& contributed_data);
+    void start_query(std::shared_ptr<messaging::QueryRequest<RecordType>> query_request, const RecordType& contributed_data);
     /**
      * Processes an overlay message that has been received for the current round.
      * This includes resetting the message timeout for this round, decrypting the
@@ -181,7 +181,7 @@ public:
      * @param message An overlay message that should be handled by this client
      * in the current round
      */
-    void handle_overlay_message(messaging::OverlayTransportMessage& message);
+    void handle_overlay_message(messaging::OverlayTransportMessage<RecordType>& message);
     /**
      * Processes an aggregation message, assuming the protocol is currently in
      * the aggregation phase.
@@ -196,14 +196,14 @@ public:
      *
      * @param message The ping message
      */
-    void handle_ping_message(const messaging::PingMessage& message);
+    void handle_ping_message(const messaging::PingMessage<RecordType>& message);
     /**
      * Stores an overlay message for a future round in an internal cache, so it can be
      * automatically handled when the round advances.
      *
      * @param message A shared_ptr to the overlay message, which ProtocolState will now own
      */
-    void buffer_future_message(std::shared_ptr<messaging::OverlayTransportMessage> message);
+    void buffer_future_message(std::shared_ptr<messaging::OverlayTransportMessage<RecordType>> message);
     /**
      * Stores an aggregation message for a future aggregation step in an internal cache,
      * so it can be automatically handled when that stage of aggregation is reached.

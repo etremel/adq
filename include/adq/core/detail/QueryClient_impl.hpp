@@ -9,8 +9,8 @@
 #include "adq/messaging/PingMessage.hpp"
 #include "adq/messaging/QueryRequest.hpp"
 
-#include <spdlog/spdlog.h>
 #include <spdlog/fmt/ostr.h>
+#include <spdlog/spdlog.h>
 
 #include <memory>
 
@@ -32,7 +32,7 @@ QueryClient<RecordType>::QueryClient(int id,
       data_source(std::move(data_source)) {}
 
 template <typename RecordType>
-void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::QueryRequest> message) {
+void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::QueryRequest<RecordType>> message) {
     // Forward the serialized function call to the DataSource object
     RecordType data_to_contribute = data_source->select_functions.at(message->select_function_opcode)(message->select_serialized_args.data());
     bool should_contribute = data_source->filter_functions.at(message->filter_function_opcode)(data_to_contribute, message->filter_serialized_args.data());
@@ -42,14 +42,14 @@ void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::QueryReq
 }
 
 template <typename RecordType>
-void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::PingMessage> message) {
+void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::PingMessage<RecordType>> message) {
     query_protocol_state.handle_ping_message(*message);
 }
 
 template <typename RecordType>
-void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::OverlayTransportMessage> message) {
+void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::OverlayTransportMessage<RecordType>> message) {
     if(util::gossip_target(message->sender_id, message->sender_round, num_clients) == my_id) {
-        std::shared_ptr<messaging::OverlayMessage> wrapped_message = std::static_pointer_cast<messaging::OverlayMessage>(message->body);
+        std::shared_ptr<messaging::OverlayMessage<RecordType>> wrapped_message = message->get_body();
         if(wrapped_message->query_num > query_protocol_state.get_current_query_num()) {
             // If the message is for a future query, buffer it until I get the query-start message
             query_protocol_state.buffer_future_message(message);
@@ -84,12 +84,12 @@ void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::Aggregat
     }
 }
 template <typename RecordType>
-void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::SignatureResponse> message) {
+void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::SignatureResponse<RecordType>> message) {
     query_protocol_state.handle_signature_response(*message);
 }
 
 template <typename RecordType>
-void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::SignatureRequest> message) {
+void QueryClient<RecordType>::handle_message(std::shared_ptr<messaging::SignatureRequest<RecordType>> message) {
     logger->warn("Client {} received a signature request message, which can only be handled by a server. Ignoring it.", my_id);
 }
 

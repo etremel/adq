@@ -5,6 +5,7 @@
 #include "adq/core/NetworkManager.hpp"
 #include "adq/core/TreeAggregationState.hpp"
 #include "adq/messaging/ByteBody.hpp"
+#include "adq/messaging/MessageBody.hpp"
 #include "adq/messaging/PathOverlayMessage.hpp"
 #include "adq/messaging/PingMessage.hpp"
 #include "adq/messaging/QueryRequest.hpp"
@@ -44,7 +45,7 @@ ProtocolState<RecordType>::ProtocolState(int num_clients, int local_client_id, N
       agreement_start_round(0) {}
 
 template <typename RecordType>
-void ProtocolState<RecordType>::start_query(std::shared_ptr<messaging::QueryRequest> query_request, const RecordType& contributed_data) {
+void ProtocolState<RecordType>::start_query(std::shared_ptr<messaging::QueryRequest<RecordType>> query_request, const RecordType& contributed_data) {
     overlay_round = -1;
     is_last_round = false;
     ping_response_from_predecessor = false;
@@ -62,15 +63,15 @@ void ProtocolState<RecordType>::start_query(std::shared_ptr<messaging::QueryRequ
     agreement_phase_state = std::make_unique<CrusaderAgreementState<RecordType>>(meter_id, num_meters, query_request->query_number, crypto);
     // Blind my ValueTuple and send it to the utility to be signed
     auto blinded_contribution = crypto.rsa_blind(*my_contribution);
-    network.send(std::make_shared<messaging::SignatureRequest>(meter_id, blinded_contribution));
+    network.send(std::make_shared<messaging::SignatureRequest<RecordType>>(meter_id, blinded_contribution));
 }
 
 template <typename RecordType>
-void ProtocolState<RecordType>::handle_signature_response(messaging::SignatureResponse& message) {
+void ProtocolState<RecordType>::handle_signature_response(messaging::SignatureResponse<RecordType>& message) {
     auto signed_contribution = std::make_shared<messaging::ValueContribution<RecordType>>(*my_contribution);
     // Decrypt the utility's signature and copy it into ValueContribution's signature field
     crypto.rsa_unblind_signature(*my_contribution,
-                                 *std::static_pointer_cast<messaging::SignatureResponse::body_type>(message.body),
+                                 *message.get_body(),
                                  signed_contribution->signature);
 
     logger->debug("Client {} is finished with Setup", meter_id);
@@ -79,10 +80,10 @@ void ProtocolState<RecordType>::handle_signature_response(messaging::SignatureRe
 }
 
 template <typename RecordType>
-void ProtocolState<RecordType>::handle_ping_message(const messaging::PingMessage& message) {
+void ProtocolState<RecordType>::handle_ping_message(const messaging::PingMessage<RecordType>& message) {
     if(!message.is_response) {
         // If this is a ping request, send a response back
-        auto reply = std::make_shared<messaging::PingMessage>(meter_id, true);
+        auto reply = std::make_shared<messaging::PingMessage<RecordType>>(meter_id, true);
         logger->trace("Meter {} replying to a ping from {}", meter_id, message.sender_id);
         network.send(reply, message.sender_id);
     } else if(message.sender_id == util::gossip_predecessor(meter_id, overlay_round, num_meters)) {
@@ -93,19 +94,19 @@ void ProtocolState<RecordType>::handle_ping_message(const messaging::PingMessage
 }
 
 template <typename RecordType>
-void ProtocolState<RecordType>::handle_overlay_message(messaging::OverlayTransportMessage& message) {
+void ProtocolState<RecordType>::handle_overlay_message(messaging::OverlayTransportMessage<RecordType>& message) {
     if(is_in_overlay_phase()) {
         timers->cancel_timer(round_timeout_timer);
         round_timeout_timer = timers->register_timer(OVERLAY_ROUND_TIMEOUT, [this]() { handle_round_timeout(); });
     }
     // The only valid MessageBody for an OverlayTransportMessage is an OverlayMessage
-    auto overlay_message = std::static_pointer_cast<messaging::OverlayMessage>(message.body);
+    auto overlay_message = std::static_pointer_cast<messaging::OverlayMessage<RecordType>>(message.body);
     if(overlay_message->is_encrypted) {
         // Decrypt the body in-place
         crypto.rsa_decrypt(*overlay_message);
     }
     // If the body is a non-encrypted PathOverlayMessage, add it to waiting_messages
-    if(auto path_overlay_message = std::dynamic_pointer_cast<messaging::PathOverlayMessage>(message.body)) {
+    if(auto path_overlay_message = std::dynamic_pointer_cast<messaging::PathOverlayMessage<RecordType>>(message.body)) {
         if(!path_overlay_message->remaining_path.empty()) {
             // Pop remaining_path into destination and add to waiting_messages
             path_overlay_message->destination = path_overlay_message->remaining_path.front();
@@ -114,14 +115,14 @@ void ProtocolState<RecordType>::handle_overlay_message(messaging::OverlayTranspo
         }
     }
     // Dummy messages will have a null payload
-    if(overlay_message->body != nullptr) {
+    if(overlay_message->enclosed_body != nullptr) {
         /* If it's an encrypted onion that needs to be forwarded, the payload will be the next layer.
          * If the payload is not an OverlayMessage, it's either a PathOverlayMessage or the last layer
          * of the onion. The last layer of the onion will always have destination == meter_id (because
          * it was just received here), but a PathOverlayMessage that still needs to be forwarded will
          * have its destination already set to the next hop by the superclass handle_overlay_message.
          */
-        if(auto enclosed_message = std::dynamic_pointer_cast<messaging::OverlayMessage>(overlay_message->body)) {
+        if(auto enclosed_message = std::dynamic_pointer_cast<messaging::OverlayMessage<RecordType>>(overlay_message->enclosed_body)) {
             waiting_messages.emplace_back(enclosed_message);
         } else if(overlay_message->destination == meter_id) {
             if(protocol_phase == ProtocolPhase::SHUFFLE) {
@@ -137,9 +138,9 @@ void ProtocolState<RecordType>::handle_overlay_message(messaging::OverlayTranspo
 }
 
 template <typename RecordType>
-void ProtocolState<RecordType>::handle_shuffle_phase_message(const messaging::OverlayMessage& message) {
+void ProtocolState<RecordType>::handle_shuffle_phase_message(const messaging::OverlayMessage<RecordType>& message) {
     // Drop messages that are received in the wrong phase (i.e. not ValueContributions) or have the wrong round number
-    if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution<RecordType>>(message.body)) {
+    if(auto contribution = std::dynamic_pointer_cast<messaging::ValueContribution<RecordType>>(message.enclosed_body)) {
         if(contribution->value_tuple.query_num == my_contribution->query_num) {
             // Verify the owner's signature
             if(crypto.rsa_verify(contribution->value_tuple, contribution->signature)) {
@@ -149,13 +150,13 @@ void ProtocolState<RecordType>::handle_shuffle_phase_message(const messaging::Ov
         } else {
             logger->warn("Meter {} rejected a proxy value because it had the wrong query number: {}", meter_id, *contribution);
         }
-    } else if(message.body != nullptr) {
+    } else if(message.enclosed_body != nullptr) {
         logger->warn("Meter {} rejected a message because it was not a ValueContribution: {}", meter_id, message);
     }
 }
 
 template <typename RecordType>
-void ProtocolState<RecordType>::handle_agreement_phase_message(const messaging::OverlayMessage& message) {
+void ProtocolState<RecordType>::handle_agreement_phase_message(const messaging::OverlayMessage<RecordType>& message) {
     agreement_phase_state->handle_message(message);
 }
 
@@ -195,14 +196,17 @@ void ProtocolState<RecordType>::send_aggregate_if_done() {
 }
 
 template <typename RecordType>
-void ProtocolState<RecordType>::encrypted_multicast_to_proxies(const std::shared_ptr<messaging::ValueContribution<RecordType>>& contribution) {
+void ProtocolState<RecordType>::encrypted_multicast_to_proxies(std::shared_ptr<messaging::ValueContribution<RecordType>> contribution) {
     // Find independent paths starting at round 0
     auto proxy_paths = util::find_paths(meter_id, contribution->value_tuple.proxies, num_meters, 0);
     logger->trace("Client {} picked these proxy paths: {}", meter_id, proxy_paths);
     for(const auto& proxy_path : proxy_paths) {
         // Create an encrypted onion for this path and send it
-        outgoing_messages.emplace_back(messaging::build_encrypted_onion(proxy_path,
-                                                                        contribution, contribution->value_tuple.query_num, crypto));
+        outgoing_messages.emplace_back(
+            messaging::build_encrypted_onion(proxy_path,
+                                             std::static_pointer_cast<messaging::MessageBody<RecordType>>(contribution), //unnecessary cast from derived to base
+                                             contribution->value_tuple.query_num,
+                                             crypto));
     }
     // Start the overlay by ending "round -1", which will send the messages at the start of round 0
     end_overlay_round();
@@ -229,7 +233,7 @@ void ProtocolState<RecordType>::end_overlay_round() {
             auto proxy_paths = util::find_paths(meter_id, other_proxies, num_meters, overlay_round + 1);
             for(const auto& proxy_path : proxy_paths) {
                 // Encrypt with the destination's public key, but don't make an onion
-                auto path_message = std::make_shared<messaging::PathOverlayMessage>(
+                auto path_message = std::make_shared<messaging::PathOverlayMessage<RecordType>>(
                     get_current_query_num(), proxy_path, signed_value);
                 crypto.rsa_encrypt(*path_message, proxy_path.back());
                 outgoing_messages.emplace_back(path_message);
@@ -280,7 +284,7 @@ void ProtocolState<RecordType>::common_end_overlay_round() {
     const int predecessor = util::gossip_predecessor(meter_id, overlay_round, num_meters);
     if(failed_meter_ids.find(predecessor) == failed_meter_ids.end()) {
         // Send a ping to the predecessor meter to see if it's still alive
-        auto ping = std::make_shared<messaging::PingMessage>(meter_id, false);
+        auto ping = std::make_shared<messaging::PingMessage<RecordType>>(meter_id, false);
         // This turns out to be really important: Checking whether this ping succeeds
         // is the most common way of detecting that a node has failed
         auto success = network.send(ping, predecessor);
@@ -291,12 +295,11 @@ void ProtocolState<RecordType>::common_end_overlay_round() {
     }
 
     // Check future messages in case messages for the next round have already been received
-    ptr_list<messaging::OverlayTransportMessage> received_messages;
+    ptr_list<messaging::OverlayTransportMessage<RecordType>> received_messages;
     for(auto message_iter = future_overlay_messages.begin();
         message_iter != future_overlay_messages.end();) {
         if((*message_iter)->sender_round == overlay_round &&
-           std::static_pointer_cast<messaging::OverlayTransportMessage::body_type>((*message_iter)->body)
-                   ->query_num == get_current_query_num()) {
+           (*message_iter)->get_body()->query_num == get_current_query_num()) {
             received_messages.emplace_back(*message_iter);
             message_iter = future_overlay_messages.erase(message_iter);
         } else {
@@ -322,13 +325,13 @@ void ProtocolState<RecordType>::common_end_overlay_round() {
 template <typename RecordType>
 void ProtocolState<RecordType>::send_overlay_message_batch() {
     const int comm_target = util::gossip_target(meter_id, overlay_round, num_meters);
-    ptr_list<messaging::OverlayTransportMessage> messages_to_send;
+    ptr_list<messaging::OverlayTransportMessage<RecordType>> messages_to_send;
     // First, check waiting messages to see if some are now in the right round
     for(auto message_iter = waiting_messages.begin();
         message_iter != waiting_messages.end();) {
         if((*message_iter)->destination == comm_target) {
             // wrap it up in a new OverlayTransportMessage, then delete from waiting_messages
-            messages_to_send.emplace_back(std::make_shared<messaging::OverlayTransportMessage>(
+            messages_to_send.emplace_back(std::make_shared<messaging::OverlayTransportMessage<RecordType>>(
                 meter_id, overlay_round, false, *message_iter));
             message_iter = waiting_messages.erase(message_iter);
         } else {
@@ -338,7 +341,7 @@ void ProtocolState<RecordType>::send_overlay_message_batch() {
     // Next, check messages generated by the protocol this round to see if they should be sent or held
     for(const auto& overlay_message : outgoing_messages) {
         if(overlay_message->flood || overlay_message->destination == comm_target) {
-            messages_to_send.emplace_back(std::make_shared<messaging::OverlayTransportMessage>(
+            messages_to_send.emplace_back(std::make_shared<messaging::OverlayTransportMessage<RecordType>>(
                 meter_id, overlay_round, false, overlay_message));
         } else {
             waiting_messages.emplace_back(overlay_message);
@@ -355,9 +358,9 @@ void ProtocolState<RecordType>::send_overlay_message_batch() {
         }
     } else {
         // If we didn't send anything this round, send an empty message to ensure the target can advance his round
-        auto dummy_message = std::make_shared<messaging::OverlayMessage>(
+        auto dummy_message = std::make_shared<messaging::OverlayMessage<RecordType>>(
             get_current_query_num(), comm_target, nullptr);
-        auto dummy_transport = std::make_shared<messaging::OverlayTransportMessage>(
+        auto dummy_transport = std::make_shared<messaging::OverlayTransportMessage<RecordType>>(
             meter_id, overlay_round, true, dummy_message);
         logger->trace("Meter {} sending a dummy message to meter {}", meter_id, comm_target);
         auto success = network.send({dummy_transport}, comm_target);
@@ -375,7 +378,7 @@ void ProtocolState<RecordType>::handle_round_timeout() {
         const int predecessor = util::gossip_predecessor(meter_id, overlay_round, num_meters);
         logger->trace("Meter {} continuing to wait for round {}, got a response from {} recently", meter_id, overlay_round, predecessor);
         round_timeout_timer = timers->register_timer(OVERLAY_ROUND_TIMEOUT, [this]() { handle_round_timeout(); });
-        auto ping = std::make_shared<messaging::PingMessage>(meter_id, false);
+        auto ping = std::make_shared<messaging::PingMessage<RecordType>>(meter_id, false);
         auto success = network.send(ping, predecessor);
         if(!success) {
             logger->debug("Meter {} detected that meter {} just went down after responding to a ping", meter_id, predecessor);
@@ -388,7 +391,7 @@ void ProtocolState<RecordType>::handle_round_timeout() {
 }
 
 template <typename RecordType>
-void ProtocolState<RecordType>::buffer_future_message(std::shared_ptr<messaging::OverlayTransportMessage> message) {
+void ProtocolState<RecordType>::buffer_future_message(std::shared_ptr<messaging::OverlayTransportMessage<RecordType>> message) {
     future_overlay_messages.push_back(std::move(message));
 }
 template <typename RecordType>

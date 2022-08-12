@@ -12,6 +12,16 @@ template <typename RecordType>
 const constexpr MessageBodyType AgreementValue<RecordType>::type;
 
 template <typename RecordType>
+bool AgreementValue<RecordType>::operator==(const MessageBody<RecordType>& _rhs) const {
+    if(auto* rhs = dynamic_cast<const AgreementValue<RecordType>*>(&_rhs))
+        return this->signed_value == rhs->signed_value &&
+               this->accepter_id == rhs->accepter_id &&
+               this->accepter_signature == rhs->accepter_signature;
+    else
+        return false;
+}
+
+template <typename RecordType>
 std::size_t AgreementValue<RecordType>::bytes_size() const {
     // Don't add sizeof(MessageBodyType) because SignedValue already adds it
     return mutils::bytes_size(signed_value) +

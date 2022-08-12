@@ -47,7 +47,7 @@ void QueryServer<RecordType>::shut_down() {
 }
 
 template <typename RecordType>
-void QueryServer<RecordType>::start_query(std::shared_ptr<messaging::QueryRequest> query) {
+void QueryServer<RecordType>::start_query(std::shared_ptr<messaging::QueryRequest<RecordType>> query) {
     curr_query_meters_signed.clear();
     query_num = query->query_number;
     curr_query_results.clear();
@@ -67,11 +67,11 @@ void QueryServer<RecordType>::start_query(std::shared_ptr<messaging::QueryReques
 }
 
 template <typename RecordType>
-void QueryServer<RecordType>::start_queries(const std::list<std::shared_ptr<messaging::QueryRequest>>& queries) {
+void QueryServer<RecordType>::start_queries(const std::list<std::shared_ptr<messaging::QueryRequest<RecordType>>>& queries) {
     if(queries.empty())
         return;
     for(const auto& query : queries) pending_batch_queries.push(query);
-    std::shared_ptr<messaging::QueryRequest> first_query = pending_batch_queries.top();
+    std::shared_ptr<messaging::QueryRequest<RecordType>> first_query = pending_batch_queries.top();
     pending_batch_queries.pop();
     start_query(first_query);
 }
@@ -109,11 +109,10 @@ void QueryServer<RecordType>::end_query() {
 }
 
 template <typename RecordType>
-void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::SignatureRequest> message) {
+void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::SignatureRequest<RecordType>> message) {
     if(curr_query_meters_signed.find(message->sender_id) == curr_query_meters_signed.end()) {
-        auto signed_value = crypto_library.rsa_sign_blinded(
-            *std::static_pointer_cast<messaging::SignatureRequest::body_type>(message->body));
-        network.send(std::make_shared<messaging::SignatureResponse>(UTILITY_NODE_ID, signed_value), message->sender_id);
+        auto signed_value = crypto_library.rsa_sign_blinded(*message->get_body());
+        network.send(std::make_shared<messaging::SignatureResponse<RecordType>>(UTILITY_NODE_ID, signed_value), message->sender_id);
         curr_query_meters_signed.insert(message->sender_id);
     }
 }
@@ -153,22 +152,22 @@ bool QueryServer<RecordType>::deregister_query_callback(const int callback_id) {
 }
 
 template <typename RecordType>
-void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::OverlayTransportMessage> message) {
+void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::OverlayTransportMessage<RecordType>> message) {
     logger->warn("Server received an OverlayTransport message. Ignoring it.");
 }
 
 template <typename RecordType>
-void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::PingMessage> message) {
+void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::PingMessage<RecordType>> message) {
     logger->warn("Server received a ping message. Ignoring it.");
 }
 
 template <typename RecordType>
-void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::QueryRequest> message) {
+void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::QueryRequest<RecordType>> message) {
     logger->warn("Server received a QueryRequest message. Ignoring it.");
 }
 
 template <typename RecordType>
-void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::SignatureResponse> message) {
+void QueryServer<RecordType>::handle_message(std::shared_ptr<messaging::SignatureResponse<RecordType>> message) {
     logger->warn("Server received a SignatureResponse message. Ignoring it.");
 }
 

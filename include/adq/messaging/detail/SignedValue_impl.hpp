@@ -5,8 +5,18 @@ namespace adq {
 namespace messaging {
 
 // Voodoo incantations
-template<typename RecordType>
+template <typename RecordType>
 const constexpr MessageBodyType SignedValue<RecordType>::type;
+
+template <typename RecordType>
+bool SignedValue<RecordType>::operator==(const MessageBody<RecordType>& _rhs) const {
+    if(auto* rhs = dynamic_cast<const SignedValue<RecordType>*>(&_rhs))
+        return (rhs->value == nullptr ? value == rhs->value
+                                      : *value == *(rhs->value)) &&
+               this->signatures == rhs->signatures;
+    else
+        return false;
+}
 
 // I don't have time to make this generic for all std::maps
 template <typename RecordType>

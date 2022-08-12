@@ -1,10 +1,3 @@
-/*
- * OverlayMessage.h
- *
- *  Created on: May 17, 2016
- *      Author: edward
- */
-
 #pragma once
 
 #include "MessageBody.hpp"
@@ -23,31 +16,36 @@ namespace messaging {
  * another OverlayMessage if the message is an encrypted onion. Each time an
  * OverlayMessage is relayed to another node, it is "wrapped" in a new
  * OverlayTransportMessage.
+ *
+ * @tparam RecordType The data type being collected by queries in this instantiation
+ * of the query system; needed because some types of message will contain instances
+ * of this data type.
  */
-class OverlayMessage : public MessageBody {
+template <typename RecordType>
+class OverlayMessage : public MessageBody<RecordType> {
 public:
     static const constexpr MessageBodyType type = MessageBodyType::OVERLAY;
     int query_num;
     int destination;
-    bool is_encrypted;  // In the simulation, this will be a marker for whether we should pretend this message is encrypted
-    bool flood;         // True if this message should be sent out on every round, regardless of destination
-    std::shared_ptr<MessageBody> body;
-    OverlayMessage(const int query_num, const int dest_id, std::shared_ptr<MessageBody> body, const bool flood = false)
-        : query_num(query_num), destination(dest_id), is_encrypted(false), flood(flood), body(std::move(body)) {}
+    bool is_encrypted;
+    /**  True if this message should be sent out on every round, regardless of destination */
+    bool flood;
+    /**
+     * A "continued" or "enclosed" body for this message body, which will be
+     * either a ValueContribution (the final payload) or another OverlayMessage
+     * (if this is an onion-encrypted message).
+     */
+    std::shared_ptr<MessageBody<RecordType>> enclosed_body;
+    OverlayMessage(const int query_num, const int dest_id, std::shared_ptr<MessageBody<RecordType>> body, const bool flood = false)
+        : query_num(query_num),
+          destination(dest_id),
+          is_encrypted(false),
+          flood(flood),
+          enclosed_body(std::move(body)) {}
     virtual ~OverlayMessage() = default;
 
-    inline bool operator==(const MessageBody& _rhs) const {
-        auto lhs = this;
-        if(auto* rhs = dynamic_cast<const OverlayMessage*>(&_rhs))
-            return lhs->query_num == rhs->query_num &&
-                   lhs->destination == rhs->destination &&
-                   lhs->is_encrypted == rhs->is_encrypted &&
-                   lhs->flood == rhs->flood &&
-                   (lhs->body == nullptr ? rhs->body == nullptr
-                                         : (rhs->body != nullptr && *lhs->body == *rhs->body));
-        else
-            return false;
-    }
+    bool operator==(const MessageBody<RecordType>& _rhs) const override;
+
     /**
      * Computes the number of bytes it would take to serialize this message.
      * @return The size of this message when serialized, in bytes.
@@ -74,11 +72,11 @@ public:
      * OverlayMessage::to_bytes(uint8_t*).
      * @return A new OverlayMessage reconstructed from the serialized bytes.
      */
-    static std::unique_ptr<OverlayMessage> from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer);
+    static std::unique_ptr<OverlayMessage<RecordType>> from_bytes(mutils::DeserializationManager* p, const uint8_t* buffer);
 
 protected:
     /** Default constructor, used only when reconstructing serialized messages */
-    OverlayMessage() : query_num(0), destination(0), is_encrypted(false), flood(false), body(nullptr) {}
+    OverlayMessage() : query_num(0), destination(0), is_encrypted(false), flood(false), enclosed_body(nullptr) {}
     /**
      * Helper method for implementing to_bytes; serializes the superclass
      * fields (from OverlayMessage) into the given buffer. Subclasses can
@@ -103,10 +101,11 @@ protected:
      * @param buffer The byte buffer containing serialized OverlayMessage fields
      * @return The number of bytes read from the buffer during deserialization.
      */
-    static std::size_t from_bytes_common(OverlayMessage& partial_overlay_message, const uint8_t* buffer);
+    static std::size_t from_bytes_common(OverlayMessage<RecordType>& partial_overlay_message, const uint8_t* buffer);
 };
 
-std::ostream& operator<<(std::ostream& out, const OverlayMessage& message);
+template <typename RecordType>
+std::ostream& operator<<(std::ostream& out, const OverlayMessage<RecordType>& message);
 
 /**
  * Constructs an OverlayMessage that will carry a payload (body) along a specific
@@ -122,17 +121,20 @@ std::ostream& operator<<(std::ostream& out, const OverlayMessage& message);
  * the message
  * @return A new encrypted OverlayMessage
  */
-std::shared_ptr<OverlayMessage> build_encrypted_onion(const std::list<int>& path, std::shared_ptr<MessageBody> payload,
-                                                      const int query_num, CryptoLibrary& crypto_library);
+template <typename RecordType>
+std::shared_ptr<OverlayMessage<RecordType>> build_encrypted_onion(const std::list<int>& path,
+                                                                  std::shared_ptr<MessageBody<RecordType>> payload,
+                                                                  const int query_num,
+                                                                  CryptoLibrary& crypto_library);
 
 } /* namespace messaging */
 }  // namespace adq
 
 namespace std {
 
-template <>
-struct hash<adq::messaging::OverlayMessage> {
-    size_t operator()(const adq::messaging::OverlayMessage& input) const {
+template <typename RecordType>
+struct hash<adq::messaging::OverlayMessage<RecordType>> {
+    size_t operator()(const adq::messaging::OverlayMessage<RecordType>& input) const {
         using adq::util::hash_combine;
 
         size_t result = 1;
@@ -140,9 +142,11 @@ struct hash<adq::messaging::OverlayMessage> {
         hash_combine(result, input.destination);
         hash_combine(result, input.is_encrypted);
         hash_combine(result, input.flood);
-        hash_combine(result, input.body);
+        hash_combine(result, input.enclosed_body);
         return result;
     }
 };
 
 }  // namespace std
+
+#include "detail/OverlayMessage_impl.hpp"

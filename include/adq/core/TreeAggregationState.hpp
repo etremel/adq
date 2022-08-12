@@ -22,7 +22,7 @@ private:
     const int num_groups;
     const int num_meters;
     NetworkManager<RecordType>& network;
-    const std::shared_ptr<messaging::QueryRequest> current_query;
+    const std::shared_ptr<messaging::QueryRequest<RecordType>> current_query;
     bool initialized;
     int children_received_from;
     int children_needed;
@@ -30,7 +30,8 @@ private:
 
 public:
     TreeAggregationState(const int node_id, const int num_groups, const int num_meters,
-                         NetworkManager<RecordType>& network_client, const std::shared_ptr<messaging::QueryRequest>& query_request)
+                         NetworkManager<RecordType>& network_client,
+                         const std::shared_ptr<messaging::QueryRequest<RecordType>>& query_request)
         : node_id(node_id),
           num_groups(num_groups),
           num_meters(num_meters),
@@ -40,8 +41,8 @@ public:
           children_received_from(0),
           children_needed(2),
           aggregation_intermediate(std::make_shared<messaging::AggregationMessage<RecordType>>(
-        node_id, current_query->query_number,
-        std::make_shared<messaging::AggregationMessageValue<RecordType>>(), 0)) {}
+              node_id, current_query->query_number,
+              std::make_shared<messaging::AggregationMessageValue<RecordType>>(), 0)) {}
     /** Performs initial setup on the tree aggregation state once the aggregation phase starts. */
     void initialize(const std::set<int>& failed_meter_ids);
     bool is_initialized() const { return initialized; }

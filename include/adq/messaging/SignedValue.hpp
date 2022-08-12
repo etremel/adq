@@ -18,7 +18,7 @@ using SignatureArray = std::array<uint8_t, 256>;
 namespace messaging {
 
 template <typename RecordType>
-class SignedValue : public MessageBody {
+class SignedValue : public MessageBody<RecordType> {
 public:
     static const constexpr MessageBodyType type = MessageBodyType::SIGNED_VALUE;
     std::shared_ptr<ValueContribution<RecordType>> value;
@@ -30,12 +30,8 @@ public:
                 const std::map<int, SignatureArray>& signatures)
         : value(std::move(value)), signatures(signatures) {}
 
-    inline bool operator==(const MessageBody& _rhs) const {
-        if(auto* rhs = dynamic_cast<const SignedValue<RecordType>*>(&_rhs))
-            return (rhs->value == nullptr ? value == rhs->value : *value == *(rhs->value)) && this->signatures == rhs->signatures;
-        else
-            return false;
-    }
+    bool operator==(const MessageBody<RecordType>& _rhs) const override;
+
     std::size_t bytes_size() const override;
     std::size_t to_bytes(uint8_t* buffer) const override;
     void post_object(const std::function<void(uint8_t const* const, std::size_t)>& function) const override;

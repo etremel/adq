@@ -29,10 +29,17 @@ template <typename RecordType>
 class AggregationMessage;
 template <typename RecordType>
 class AggregationMessageValue;
+template <typename RecordType>
 class OverlayTransportMessage;
+template <typename RecordType>
 class PingMessage;
+template <typename RecordType>
 class QueryRequest;
+template <typename RecordType>
 class SignatureRequest;
+template <typename RecordType>
 class SignatureResponse;
+template<typename RecordType>
+class ByteBody;
 }  // namespace messaging
 }  // namespace adq

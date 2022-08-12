@@ -33,6 +33,9 @@ private:
     openssl::BlindSignatureClient blind_signature_client;
     openssl::EnvelopeDecryptor my_decryptor;
 
+    /** Helper function for the constructor */
+    std::map<int, openssl::EnvelopeKey> construct_key_map_from_files(const std::map<int, std::string>& key_files_by_id);
+
 public:
     /**
      * Constructs a CryptoLibrary, loading the local client's private key and the
@@ -50,7 +53,8 @@ public:
      * @param message The message to encrypt; after calling this method, its body will be encrypted
      * @param target_id The ID of the client whose public key should be used to encrypt
      */
-    void rsa_encrypt(messaging::OverlayMessage& message, const int target_id);
+    template <typename RecordType>
+    void rsa_encrypt(messaging::OverlayMessage<RecordType>& message, const int target_id);
 
     /**
      * Encrypts a ValueTuple under under the public key of the given client.
@@ -61,8 +65,8 @@ public:
      * ByteBody since it will probably be sent in a message)
      */
     template <typename RecordType>
-    std::shared_ptr<messaging::ByteBody> rsa_encrypt(const messaging::ValueTuple<RecordType>& value,
-                                                     const int target_id);
+    std::shared_ptr<messaging::ByteBody<RecordType>> rsa_encrypt(const messaging::ValueTuple<RecordType>& value,
+                                                                 const int target_id);
 
     /**
      * Decrypts the body of an encrypted OverlayMessage, using the private
@@ -70,7 +74,8 @@ public:
      * @param message An OverlayMessage with an encrypted body; after calling
      * this method, its body will be decrypted
      */
-    void rsa_decrypt(messaging::OverlayMessage& message);
+    template <typename RecordType>
+    void rsa_decrypt(messaging::OverlayMessage<RecordType>& message);
 
     /**
      * Creates a blinded message representing a ValueTuple, by multiplying
@@ -81,7 +86,7 @@ public:
      * @return A byte sequence containing the blinded message.
      */
     template <typename RecordType>
-    std::shared_ptr<messaging::ByteBody> rsa_blind(const messaging::ValueTuple<RecordType>& value);
+    std::shared_ptr<messaging::ByteBody<RecordType>> rsa_blind(const messaging::ValueTuple<RecordType>& value);
 
     /**
      * Signs a blinded message with the current client's private key.
@@ -93,7 +98,8 @@ public:
      * @return A blind signature over the message, which is also a
      * sequence of bytes represented as a ByteBody
      */
-    std::shared_ptr<messaging::ByteBody> rsa_sign_blinded(const messaging::ByteBody& blinded_message);
+    template <typename RecordType>
+    std::shared_ptr<messaging::ByteBody<RecordType>> rsa_sign_blinded(const messaging::ByteBody<RecordType>& blinded_message);
 
     /**
      * Unblinds a signature on a ValueTuple using the inverse of the blinding

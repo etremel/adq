@@ -12,12 +12,6 @@
 namespace adq {
 namespace messaging {
 
-template <typename RecordType>
-std::ostream& operator<<(std::ostream& out, const AggregationMessageValue<RecordType>& v) {
-    out << v.value;
-    return out;
-}
-
 template<typename RecordType>
 bool operator==(const AggregationMessage<RecordType>& lhs, const AggregationMessage<RecordType>& rhs) {
     return lhs.num_contributors == rhs.num_contributors && lhs.query_num == rhs.query_num && (*lhs.body) == (*rhs.body);
@@ -38,7 +32,7 @@ std::size_t AggregationMessage<RecordType>::bytes_size() const {
     return mutils::bytes_size(type) +
            mutils::bytes_size(num_contributors) +
            mutils::bytes_size(query_num) +
-           Message::bytes_size();
+           Message<RecordType>::bytes_size();
 }
 
 template <typename RecordType>
@@ -46,7 +40,7 @@ std::size_t AggregationMessage<RecordType>::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = mutils::to_bytes(type, buffer);
     bytes_written += mutils::to_bytes(num_contributors, buffer + bytes_written);
     bytes_written += mutils::to_bytes(query_num, buffer + bytes_written);
-    bytes_written += Message::to_bytes(buffer + bytes_written);
+    bytes_written += Message<RecordType>::to_bytes(buffer + bytes_written);
     return bytes_written;
 }
 
@@ -55,7 +49,7 @@ void AggregationMessage<RecordType>::post_object(const std::function<void(const 
     mutils::post_object(function, type);
     mutils::post_object(function, num_contributors);
     mutils::post_object(function, query_num);
-    Message::post_object(function);
+    Message<RecordType>::post_object(function);
 }
 
 template <typename RecordType>

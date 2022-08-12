@@ -1,11 +1,7 @@
-/**
- * @file QueryRequest.cpp
- *
- * @date Oct 14, 2016
- * @author edward
- */
+#pragma once
 
-#include "adq/messaging/QueryRequest.hpp"
+#include "../QueryRequest.hpp"
+
 #include "adq/mutils-serialization/SerializationSupport.hpp"
 
 #include <memory>
@@ -14,9 +10,22 @@
 namespace adq {
 namespace messaging {
 
-const constexpr MessageType QueryRequest::type;
+template <typename RecordType>
+const constexpr MessageType QueryRequest<RecordType>::type;
 
-std::size_t QueryRequest::bytes_size() const {
+template <typename RecordType>
+bool QueryRequest<RecordType>::operator==(const Message<RecordType>& _rhs) const {
+    if(auto* rhs = dynamic_cast<const QueryRequest<RecordType>*>(&_rhs))
+        return this->select_function_opcode == rhs->select_function_opcode &&
+               this->filter_function_opcode == rhs->filter_function_opcode &&
+               this->aggregate_function_opcode == rhs->aggregate_function_opcode &&
+               this->query_number == rhs->query_number;
+    else
+        return false;
+}
+
+template <typename RecordType>
+std::size_t QueryRequest<RecordType>::bytes_size() const {
     return mutils::bytes_size(type) +
            mutils::bytes_size(sender_id) +
            mutils::bytes_size(query_number) +
@@ -28,7 +37,8 @@ std::size_t QueryRequest::bytes_size() const {
            mutils::bytes_size(aggregate_serialized_args);
 }
 
-std::size_t QueryRequest::to_bytes(uint8_t* buffer) const {
+template <typename RecordType>
+std::size_t QueryRequest<RecordType>::to_bytes(uint8_t* buffer) const {
     std::size_t bytes_written = mutils::to_bytes(type, buffer);
     bytes_written += mutils::to_bytes(sender_id, buffer + bytes_written);
     bytes_written += mutils::to_bytes(query_number, buffer + bytes_written);
@@ -41,7 +51,8 @@ std::size_t QueryRequest::to_bytes(uint8_t* buffer) const {
     return bytes_written;
 }
 
-void QueryRequest::post_object(const std::function<void(const uint8_t* const, std::size_t)>& function) const {
+template <typename RecordType>
+void QueryRequest<RecordType>::post_object(const std::function<void(const uint8_t* const, std::size_t)>& function) const {
     mutils::post_object(function, type);
     mutils::post_object(function, sender_id);
     mutils::post_object(function, query_number);
@@ -53,7 +64,8 @@ void QueryRequest::post_object(const std::function<void(const uint8_t* const, st
     mutils::post_object(function, aggregate_serialized_args);
 }
 
-std::unique_ptr<QueryRequest> QueryRequest::from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) {
+template <typename RecordType>
+std::unique_ptr<QueryRequest<RecordType>> QueryRequest<RecordType>::from_bytes(mutils::DeserializationManager* m, const uint8_t* buffer) {
     std::size_t bytes_read = 0;
     MessageType message_type;
     std::memcpy(&message_type, buffer + bytes_read, sizeof(MessageType));
@@ -92,12 +104,13 @@ std::unique_ptr<QueryRequest> QueryRequest::from_bytes(mutils::DeserializationMa
     bytes_read += mutils::bytes_size(*aggregate_serialized_args);
 
     // Unnecessary extra copy of the byte arrays
-    return std::make_unique<QueryRequest>(query_number, select_function_opcode, filter_function_opcode,
-                                          aggregate_function_opcode, *select_serialized_args,
-                                          *filter_serialized_args, *aggregate_serialized_args);
+    return std::make_unique<QueryRequest<RecordType>>(query_number, select_function_opcode, filter_function_opcode,
+                                                      aggregate_function_opcode, *select_serialized_args,
+                                                      *filter_serialized_args, *aggregate_serialized_args);
 }
 
-std::ostream& operator<<(std::ostream& out, const QueryRequest& qr) {
+template <typename RecordType>
+std::ostream& operator<<(std::ostream& out, const QueryRequest<RecordType>& qr) {
     return out << "{QueryRequest: query_number=" << qr.query_number
                << " | select_opcode=" << qr.select_function_opcode
                << " | filter_opcode=" << qr.filter_function_opcode

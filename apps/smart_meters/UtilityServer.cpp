@@ -17,7 +17,7 @@ void query_finished_callback(const int query_num,
     std::cout << "Result was: " << *result << std::endl;
 }
 
-std::shared_ptr<adq::messaging::QueryRequest> make_measure_consumption_query(int query_num, int window_minutes) {
+std::shared_ptr<adq::messaging::QueryRequest<SimSmartMeter::DataRecordType>> make_measure_consumption_query(int query_num, int window_minutes) {
     // Construct a buffer containing the serialized arguments to the "measure consumption" function
     std::size_t select_args_size = mutils::bytes_size(window_minutes);
     std::vector<uint8_t> select_args(select_args_size);
@@ -25,14 +25,14 @@ std::shared_ptr<adq::messaging::QueryRequest> make_measure_consumption_query(int
     // The filter and aggregate functions don't have arguments, so create empty buffers for them
     std::vector<uint8_t> filter_args(0);
     std::vector<uint8_t> aggregate_args(0);
-    return std::make_shared<adq::messaging::QueryRequest>(
+    return std::make_shared<adq::messaging::QueryRequest<SimSmartMeter::DataRecordType>>(
         query_num, SimSmartMeter::SelectFunctions::MEASURE_CONSUMPTION,
         SimSmartMeter::FilterFunctions::NO_FILTER,
         SimSmartMeter::AggregateFunctions::SUM_VECTORS,
         select_args, filter_args, aggregate_args);
 }
 
-std::shared_ptr<adq::messaging::QueryRequest> make_shiftable_consumption_query(int query_num, int window_minutes) {
+std::shared_ptr<adq::messaging::QueryRequest<SimSmartMeter::DataRecordType>> make_shiftable_consumption_query(int query_num, int window_minutes) {
     // Construct a buffer containing the serialized arguments to the "measure shiftable consumption" function
     std::size_t select_args_size = mutils::bytes_size(window_minutes);
     std::vector<uint8_t> select_args(select_args_size);
@@ -40,7 +40,7 @@ std::shared_ptr<adq::messaging::QueryRequest> make_shiftable_consumption_query(i
     // The filter and aggregate functions don't have arguments, so create empty buffers for them
     std::vector<uint8_t> filter_args(0);
     std::vector<uint8_t> aggregate_args(0);
-    return std::make_shared<adq::messaging::QueryRequest>(
+    return std::make_shared<adq::messaging::QueryRequest<SimSmartMeter::DataRecordType>>(
         query_num, SimSmartMeter::SelectFunctions::MEASURE_SHIFTABLE_CONSUMPTION,
         SimSmartMeter::FilterFunctions::NO_FILTER,
         SimSmartMeter::AggregateFunctions::SUM_VECTORS,
