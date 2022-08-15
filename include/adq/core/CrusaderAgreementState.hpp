@@ -1,22 +1,12 @@
 #pragma once
 
-#include "adq/messaging/SignedValue.hpp"
-#include "adq/messaging/ValueContribution.hpp"
-#include "adq/messaging/OverlayMessage.hpp"
+#include "adq/core/InternalTypes.hpp"
 #include "adq/util/PointerUtil.hpp"
 
 #include <cmath>
 #include <memory>
 #include <unordered_map>
 #include <vector>
-
-namespace adq {
-class CryptoLibrary;
-namespace messaging {
-template <typename RecordType>
-struct AgreementValue;
-} /* namespace messaging */
-}  // namespace adq
 
 namespace adq {
 

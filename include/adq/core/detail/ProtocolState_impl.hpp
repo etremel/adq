@@ -204,7 +204,7 @@ void ProtocolState<RecordType>::encrypted_multicast_to_proxies(std::shared_ptr<m
         // Create an encrypted onion for this path and send it
         outgoing_messages.emplace_back(
             messaging::build_encrypted_onion(proxy_path,
-                                             std::static_pointer_cast<messaging::MessageBody<RecordType>>(contribution), //unnecessary cast from derived to base
+                                             std::static_pointer_cast<messaging::MessageBody<RecordType>>(contribution),  // unnecessary cast from derived to base
                                              contribution->value_tuple.query_num,
                                              crypto));
     }

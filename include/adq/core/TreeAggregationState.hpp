@@ -3,8 +3,6 @@
 #include "NetworkManager.hpp"
 #include "adq/core/DataSource.hpp"
 #include "adq/core/InternalTypes.hpp"
-#include "adq/messaging/QueryRequest.hpp"
-#include "adq/messaging/ValueContribution.hpp"
 #include "adq/util/PointerUtil.hpp"
 
 #include <memory>

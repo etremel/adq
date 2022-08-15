@@ -2,8 +2,11 @@
 
 #include "../TreeAggregationState.hpp"
 
+#include "adq/core/DataSource.hpp"
 #include "adq/core/NetworkManager.hpp"
 #include "adq/messaging/AggregationMessage.hpp"
+#include "adq/messaging/QueryRequest.hpp"
+#include "adq/messaging/ValueContribution.hpp"
 #include "adq/util/Overlay.hpp"
 #include "adq/util/PointerUtil.hpp"
 

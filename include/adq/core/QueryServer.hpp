@@ -4,7 +4,6 @@
 #include "InternalTypes.hpp"
 #include "MessageConsumer.hpp"
 #include "NetworkManager.hpp"
-#include "adq/messaging/AggregationMessage.hpp"
 #include "adq/util/PointerUtil.hpp"
 #include "adq/util/TimerManager.hpp"
 

@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <list>
 #include <memory>
 #include <ostream>
 
