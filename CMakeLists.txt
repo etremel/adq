@@ -9,7 +9,7 @@ project(adq
     VERSION 1.0.0
     LANGUAGES C CXX)
 
-    include(GNUInstallDirs)
+include(GNUInstallDirs)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall -ggdb")

@@ -1,0 +1,3 @@
+add_executable(openssl_test openssl_test.cpp)
+target_link_libraries(openssl_test adq)
+target_compile_features(openssl_test PUBLIC cxx_std_17)

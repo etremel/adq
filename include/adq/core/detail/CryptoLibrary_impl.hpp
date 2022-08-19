@@ -50,13 +50,11 @@ bool CryptoLibrary::rsa_verify(const messaging::ValueContribution<RecordType>& v
 template <typename RecordType>
 bool CryptoLibrary::rsa_verify(const messaging::ValueTuple<RecordType>& value,
                                const SignatureArray& signature) {
-    openssl::Verifier verifier(public_keys_by_id.at(UTILITY_NODE_ID), openssl::DigestAlgorithm::SHA256);
-    verifier.init();
     std::size_t value_bytes_length = mutils::bytes_size(value);
     uint8_t value_bytes[value_bytes_length];
     mutils::to_bytes(value, value_bytes);
-    verifier.add_bytes(value_bytes, value_bytes_length);
-    return verifier.finalize(signature.data(), signature.size());
+    return blind_signature_client.verify_signature(value_bytes, value_bytes_length,
+                                                   signature.data(), signature.size());
 }
 
 template <typename RecordType>

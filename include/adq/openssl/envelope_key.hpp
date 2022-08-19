@@ -43,6 +43,12 @@ public:
         return key.get();
     }
     /**
+     * Const version of the implicit converter to EVP_PKEY*; gets the wrapped raw pointer.
+     */
+    operator const EVP_PKEY*() const {
+        return key.get();
+    }
+    /**
      * Implicit bool conversion that matches std::unique_ptr's, so this object
      * can be tested for emptiness in the same way.
      * @return false if the wrapped EVP_PKEY pointer is empty, true if it is not.
