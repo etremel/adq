@@ -1,16 +1,18 @@
 #include "adq/openssl/signature.hpp"
 #include "adq/openssl/envelope_key.hpp"
 
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
 #include <cstdio>
 #include <cstring>
-#include <openssl/err.h>
 
 namespace openssl {
 
 Signer::Signer(const EnvelopeKey& _private_key, DigestAlgorithm digest_type)
-        : private_key(_private_key),
-          digest_type(digest_type),
-          digest_context(EVP_MD_CTX_new()) {}
+    : private_key(_private_key),
+      digest_type(digest_type),
+      digest_context(EVP_MD_CTX_new()) {}
 
 int Signer::get_max_signature_size() {
     return private_key.get_max_size();
@@ -32,8 +34,8 @@ void Signer::add_bytes(const void* buffer, std::size_t buffer_size) {
 }
 
 void Signer::finalize(unsigned char* signature_buffer) {
-    //We assume the caller has allocated a signature buffer of the correct length,
-    //but we have to pass a valid siglen to EVP_DigestSignFinal anyway
+    // We assume the caller has allocated a signature buffer of the correct length,
+    // but we have to pass a valid siglen to EVP_DigestSignFinal anyway
     size_t siglen;
     if(EVP_DigestSignFinal(digest_context.get(), NULL, &siglen) != 1) {
         throw openssl_error(ERR_get_error(), "EVP_DigestSignFinal");
@@ -49,7 +51,7 @@ std::vector<unsigned char> Signer::finalize() {
         throw openssl_error(ERR_get_error(), "EVP_DigestSignFinal");
     }
     std::vector<unsigned char> signature(signature_len);
-    //Technically, this function call may change signature_len again, but with RSA it never does
+    // Technically, this function call may change signature_len again, but with RSA it never does
     if(EVP_DigestSignFinal(digest_context.get(), signature.data(), &signature_len) != 1) {
         throw openssl_error(ERR_get_error(), "EVP_DigestSignFinal");
     }
@@ -66,8 +68,8 @@ void Signer::sign_bytes(const void* buffer, std::size_t buffer_size, unsigned ch
     if(EVP_DigestSignUpdate(digest_context.get(), buffer, buffer_size) != 1) {
         throw openssl_error(ERR_get_error(), "EVP_DigestSignUpdate");
     }
-    //We assume the caller has allocated a signature buffer of the correct length,
-    //but we have to pass a valid siglen to EVP_DigestSignFinal anyway
+    // We assume the caller has allocated a signature buffer of the correct length,
+    // but we have to pass a valid siglen to EVP_DigestSignFinal anyway
     size_t siglen;
     if(EVP_DigestSignFinal(digest_context.get(), NULL, &siglen) != 1) {
         throw openssl_error(ERR_get_error(), "EVP_DigestSignFinal");
@@ -78,9 +80,9 @@ void Signer::sign_bytes(const void* buffer, std::size_t buffer_size, unsigned ch
 }
 
 Verifier::Verifier(const EnvelopeKey& _public_key, DigestAlgorithm digest_type)
-        : public_key(_public_key),
-          digest_type(digest_type),
-          digest_context(EVP_MD_CTX_new()) {}
+    : public_key(_public_key),
+      digest_type(digest_type),
+      digest_context(EVP_MD_CTX_new()) {}
 
 int Verifier::get_max_signature_size() {
     return public_key.get_max_size();
@@ -100,7 +102,7 @@ void Verifier::add_bytes(const void* buffer, std::size_t buffer_size) {
     }
 }
 bool Verifier::finalize(const unsigned char* signature_buffer, std::size_t signature_length) {
-    //EVP_DigestVerifyFinal returns 1 on success, 0 on signature mismatch, and "another value" on a more serious error
+    // EVP_DigestVerifyFinal returns 1 on success, 0 on signature mismatch, and "another value" on a more serious error
     int status = EVP_DigestVerifyFinal(digest_context.get(), signature_buffer, signature_length);
     if(status == 1) {
         return true;

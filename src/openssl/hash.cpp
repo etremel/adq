@@ -1,5 +1,7 @@
-#include <adq/openssl/hash.hpp>
-#include <adq/openssl/openssl_exception.hpp>
+#include "adq/openssl/hash.hpp"
+#include "adq/openssl/openssl_exception.hpp"
+
+#include <openssl/evp.h>
 
 namespace openssl {
 

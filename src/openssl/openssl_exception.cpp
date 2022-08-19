@@ -3,7 +3,10 @@
  *
  */
 
-#include <adq/openssl/openssl_exception.hpp>
+#include "adq/openssl/openssl_exception.hpp"
+
+#include <sstream>
+#include <string>
 
 namespace openssl {
 

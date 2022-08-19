@@ -6,10 +6,11 @@
  */
 
 #pragma once
-#include "hash.hpp"
 #include "envelope_key.hpp"
+#include "hash.hpp"
 #include "openssl_exception.hpp"
 #include "pointers.hpp"
+
 #include <openssl/evp.h>
 #include <vector>
 

@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include <memory>
-#include <openssl/evp.h>
 #include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <memory>
 
 namespace openssl {
 
@@ -30,7 +30,7 @@ struct DeleterFor<EVP_PKEY> {
     void operator()(EVP_PKEY* p) { EVP_PKEY_free(p); }
 };
 
-template<>
+template <>
 struct DeleterFor<BIO> {
     void operator()(BIO* p) { BIO_free_all(p); }
 };
