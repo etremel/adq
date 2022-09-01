@@ -19,19 +19,19 @@
 namespace adq {
 
 template <typename RecordType>
-QueryServer<RecordType>::QueryServer(int num_clients,
-                                     uint16_t service_port,
-                                     const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map,
-                                     const std::string& private_key_filename,
-                                     const std::map<int, std::string>& public_key_files_by_id)
+QueryServer<RecordType>::QueryServer(int num_clients)
     : logger(spdlog::get("global_logger")),
       num_meters(num_clients),
-      network(this, service_port, client_id_to_ip_map),
-      crypto_library(private_key_filename, public_key_files_by_id),
+      network(this),
+      crypto_library(
+          Configuration::getString(Configuration::SECTION_SETUP, Configuration::PRIVATE_KEY_FILE),
+          make_client_key_paths(Configuration::getString(Configuration::SECTION_SETUP,
+                                                         Configuration::CLIENT_KEYS_FOLDER),
+                                num_clients)),
       timer_library(std::make_unique<util::LinuxTimerManager>()),
       query_timeout_time(compute_timeout_time(num_clients)) {}
 
-template<typename RecordType>
+template <typename RecordType>
 QueryServer<RecordType>::~QueryServer() {
     shut_down();
 }

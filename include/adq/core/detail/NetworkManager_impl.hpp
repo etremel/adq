@@ -1,5 +1,6 @@
 #include "../NetworkManager.hpp"
 
+#include "adq/config/Configuration.hpp"
 #include "adq/core/MessageConsumer.hpp"
 #include "adq/messaging/AggregationMessage.hpp"
 #include "adq/messaging/Message.hpp"
@@ -18,16 +19,17 @@
 namespace adq {
 
 template <typename RecordType>
-NetworkManager<RecordType>::NetworkManager(MessageConsumer<RecordType>* owning_client,
-                                           uint16_t service_port,
-                                           const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map)
+NetworkManager<RecordType>::NetworkManager(MessageConsumer<RecordType>* owning_client)
     : logger(spdlog::get("global_logger")),
       message_handler(owning_client),
-      id_to_ip_map(client_id_to_ip_map),
-      connection_listener(network_io_context, asio::ip::tcp::endpoint(asio::ip::tcp::tcp::v4(), service_port)) {
+      id_to_ip_map(read_ip_map_from_file(
+          Configuration::getString(Configuration::SECTION_SETUP, Configuration::CLIENT_LIST_FILE))),
+      connection_listener(network_io_context,
+                          asio::ip::tcp::endpoint(asio::ip::tcp::tcp::v4(),
+                                                  Configuration::getUInt16(Configuration::SECTION_SETUP, Configuration::CLIENT_PORT))) {
     assert(message_handler != nullptr);
     // Initialize the receive buffers with empty arrays, and initialize the reverse IP-to-ID map
-    for(const auto& id_ip_pair : client_id_to_ip_map) {
+    for(const auto& id_ip_pair : id_to_ip_map) {
         length_buffers.emplace(id_ip_pair.first, std::array<uint8_t, sizeof(std::size_t)>{});
         ip_to_id_map.emplace(id_ip_pair.second, id_ip_pair.first);
     }

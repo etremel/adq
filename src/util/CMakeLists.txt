@@ -1,5 +1,6 @@
 add_library(util OBJECT
-    ConfigParser.cpp Overlay.cpp PathFinder.cpp
+    Overlay.cpp
+    PathFinder.cpp
     LinuxTimerManager.cpp)
 
 target_include_directories(util PRIVATE

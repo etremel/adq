@@ -54,11 +54,7 @@ private:
     void end_query();
 
 public:
-    QueryServer(int num_clients,
-                uint16_t service_port,
-                const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map,
-                const std::string& private_key_filename,
-                const std::map<int, std::string>& public_key_files_by_id);
+    QueryServer(int num_clients);
 
     virtual ~QueryServer();
 

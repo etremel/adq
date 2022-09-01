@@ -1,7 +1,7 @@
+#include <adq/config/Configuration.hpp>
 #include <adq/core/QueryServer.hpp>
-#include <adq/util/ConfigParser.hpp>
 
-#include "SimParameters.hpp"
+#include "SimProperties.hpp"
 #include "SimSmartMeter.hpp"
 
 #include <iostream>
@@ -52,16 +52,18 @@ std::shared_ptr<adq::messaging::QueryRequest<SimSmartMeter::DataRecordType>> mak
 int main(int argc, char** argv) {
     using namespace smart_meters;
 
-    if(argc < 5) {
-        std::cout << "Expected arguments: <port> <utility private key file> <meter IP configuration file> <public key folder>" << std::endl;
-        return -1;
+    std::string config_file;
+    if(argc > 2) {
+        config_file = argv[1];
+    } else {
+        config_file = adq::Configuration::DEFAULT_CONFIG_FILE;
     }
+    // Load configuration options
+    adq::Configuration::initialize(config_file);
 
-    uint16_t service_port = std::stoi(argv[1]);
-    std::string utility_private_key_file(argv[2]);
-
-    // Read and parse the IP addresses
-    std::map<int, asio::ip::tcp::endpoint> meter_ips_by_id = adq::util::read_ip_map_from_file(std::string(argv[3]));
+    // Read the list of clients to determine how many there are
+    std::map<int, asio::ip::tcp::endpoint> meter_ips_by_id = adq::read_ip_map_from_file(
+        adq::Configuration::getString(adq::Configuration::SECTION_SETUP, adq::Configuration::CLIENT_LIST_FILE));
 
     int num_meters = meter_ips_by_id.size();
     int modulus = adq::util::get_valid_prime_modulus(num_meters);
@@ -71,35 +73,28 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    // Build the file paths for all the public keys based on the folder name
-    std::string meter_public_key_folder = std::string(argv[4]);
-    std::map<int, std::string> meter_public_key_files;
-    for(int id = 0; id < num_meters; ++id) {
-        std::stringstream file_path;
-        file_path << meter_public_key_folder << "/pubkey_" << id << ".pem";
-        meter_public_key_files.emplace(id, file_path.str());
-    }
-
-    adq::QueryServer<SimSmartMeter::DataRecordType> server(
-        num_meters, service_port, meter_ips_by_id,
-        utility_private_key_file, meter_public_key_files);
+    adq::QueryServer<SimSmartMeter::DataRecordType> server(num_meters);
 
     server.register_query_callback(query_finished_callback);
 
     // Start a background thread to issue queries
     std::thread utility_query_thread([&server]() {
-        for(int query_count = 0; query_count < NUM_QUERIES; ++query_count) {
+        const int num_queries = adq::Configuration::getInt32(SECTION_SIMULATION, NUM_QUERIES);
+        const int timestep_min = adq::Configuration::getInt32(SECTION_SIMULATION, USAGE_TIMESTEP_MIN);
+        const auto time_per_timestep = std::chrono::milliseconds(
+            adq::Configuration::getInt32(SECTION_SIMULATION, MS_PER_TIMESTEP));
+        for(int query_count = 0; query_count < num_queries; ++query_count) {
             auto query_req = make_measure_consumption_query(query_count, 30);
             std::cout << "Starting query " << query_count << std::endl;
             server.start_query(query_req);
-            int timesteps_in_30_min = 30 / USAGE_TIMESTEP_MIN;
-            std::this_thread::sleep_for(TIME_PER_TIMESTEP * timesteps_in_30_min);
+            int timesteps_in_30_min = 30 / timestep_min;
+            std::this_thread::sleep_for(time_per_timestep * timesteps_in_30_min);
         }
         std::cout << "Done issuing queries" << std::endl;
-        std::this_thread::sleep_for(TIME_PER_TIMESTEP * 3);
+        std::this_thread::sleep_for(time_per_timestep * 3);
         server.shut_down();
     });
-    //Start listening for incoming messages. This will block until the server shuts down.
+    // Start listening for incoming messages. This will block until the server shuts down.
     server.listen_loop();
     utility_query_thread.join();
 }

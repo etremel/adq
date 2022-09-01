@@ -1,4 +1,5 @@
 #include "../QueryClient.hpp"
+#include "adq/config/Configuration.hpp"
 #include "adq/core/DataSource.hpp"
 #include "adq/core/ProtocolState.hpp"
 #include "adq/util/Overlay.hpp"
@@ -17,18 +18,13 @@
 namespace adq {
 
 template <typename RecordType>
-QueryClient<RecordType>::QueryClient(int id,
-                                     int num_clients,
-                                     uint16_t service_port,
-                                     const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map,
-                                     const std::string& private_key_filename,
-                                     const std::map<int, std::string>& public_key_files_by_id,
+QueryClient<RecordType>::QueryClient(int num_clients,
                                      std::unique_ptr<DataSource<RecordType>> data_source)
-    : my_id(id),
+    : my_id(Configuration::getInt32(Configuration::SECTION_SETUP, Configuration::CLIENT_ID)),
       num_clients(num_clients),
       logger(spdlog::get("global_logger")),
-      network_manager(this, service_port, client_id_to_ip_map),
-      query_protocol_state(num_clients, id, network_manager, *data_source, private_key_filename, public_key_files_by_id),
+      network_manager(this),
+      query_protocol_state(num_clients, my_id, network_manager, *data_source),
       data_source(std::move(data_source)) {}
 
 template <typename RecordType>

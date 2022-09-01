@@ -130,12 +130,8 @@ public:
      * @param owning_client A pointer to the QueryClient or QueryServer object
      * that created this NetworkManager; used to deliver received messages back
      * to the application
-     * @param service_port The port that the NetworkManager should listen on for
-     * incoming connections.
-     * @param client_id_to_ip_map The QueryClient's map from client IDs to IP addresses
      */
-    NetworkManager(MessageConsumer<RecordType>* owning_client, uint16_t service_port,
-                   const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map);
+    NetworkManager(MessageConsumer<RecordType>* owning_client);
 
     /**
      * Destructor: Calls shutdown() so that no more network events are handled if the NetworkManager is destroyed

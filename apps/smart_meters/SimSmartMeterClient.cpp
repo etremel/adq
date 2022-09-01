@@ -1,12 +1,12 @@
+#include <adq/config/Configuration.hpp>
 #include <adq/core/QueryClient.hpp>
-#include <adq/util/ConfigParser.hpp>
 
 #include <regex>
 #include <string>
 #include <thread>
 
 #include "DeviceConfig.hpp"
-#include "SimParameters.hpp"
+#include "SimProperties.hpp"
 #include "SimSmartMeter.hpp"
 
 namespace smart_meters {
@@ -65,25 +65,25 @@ std::unique_ptr<SimSmartMeter> generate_meter(std::discrete_distribution<>& inco
 int main(int argc, char** argv) {
     using namespace smart_meters;
 
-    if(argc < 11) {
-        std::cout << "Expected arguments: <my ID> <utility IP address> <utility public key file> "
-                  << "<meter IP configuration file> <public key folder> <private key folder> <device configuration files> " << std::endl;
-        std::cout << "Device characteristic files are: power load, mean daily frequency, "
-                     "hourly usage probability, and household saturation."
-                  << std::endl;
+    if(argc < 5) {
+        std::cout << "Arguments: <power load file> <daily frequency file> <hourly usage file> <household saturation file> "
+                  << "[system configuration file]" << std::endl;
         return -1;
     }
+    // The optional 5th argument is the configuration file
+    std::string config_file;
+    if(argc > 5) {
+        config_file = argv[5];
+    } else {
+        config_file = adq::Configuration::DEFAULT_CONFIG_FILE;
+    }
 
-    // First argument is my ID
-    int meter_id = std::atoi(argv[1]);
+    // Load configuration options
+    adq::Configuration::initialize(config_file);
 
-    // Second argument is assumed to be the utility's IP:port
-    auto utility_ip_string = std::string(argv[2]);
-    auto colon_pos = utility_ip_string.find_first_of(':');
-    asio::ip::tcp::endpoint utility_ip(asio::ip::make_address(utility_ip_string.substr(0, colon_pos)), std::stoi(utility_ip_string.substr(colon_pos + 1)));
-
-    // Read and parse the IP addresses
-    std::map<int, asio::ip::tcp::endpoint> meter_ips_by_id = adq::util::read_ip_map_from_file(std::string(argv[4]));
+    // Read the list of clients to determine how many there are
+    std::map<int, asio::ip::tcp::endpoint> meter_ips_by_id = adq::read_ip_map_from_file(
+        adq::Configuration::getString(adq::Configuration::SECTION_SETUP, adq::Configuration::CLIENT_LIST_FILE));
 
     int num_meters = meter_ips_by_id.size();
     int modulus = adq::util::get_valid_prime_modulus(num_meters);
@@ -94,24 +94,9 @@ int main(int argc, char** argv) {
     }
     adq::ProtocolState<SimSmartMeter::DataRecordType>::init_failures_tolerated(num_meters);
 
-    // Build the file paths for all the public keys based on the folder name
-    std::string meter_public_key_folder = std::string(argv[5]);
-    std::map<int, std::string> meter_public_key_files;
-    for(int id = 0; id < num_meters; ++id) {
-        std::stringstream file_path;
-        file_path << meter_public_key_folder << "/pubkey_" << id << ".pem";
-        meter_public_key_files.emplace(id, file_path.str());
-    }
-    // Add the utility's public key
-    std::string utility_public_key_file = std::string(argv[3]);
-    meter_public_key_files.emplace(adq::UTILITY_NODE_ID, utility_public_key_file);
-    // Get the path to this meter's private key based on its ID
-    std::string meter_private_key_folder = std::string(argv[6]);
-    std::stringstream private_key_path;
-    private_key_path << meter_private_key_folder << "/privkey_" << meter_id << ".pem";
-    // Read and parse the device configurations
-    DeviceConfig device_config{std::string(argv[7]), std::string(argv[8]),
-                               std::string(argv[9]), std::string(argv[10])};
+    // Read and parse the device configurations from the files in the command-line arguments
+    DeviceConfig device_config{std::string(argv[1]), std::string(argv[2]),
+                               std::string(argv[3]), std::string(argv[4])};
     std::mt19937 random_engine;
     std::discrete_distribution<> income_distribution({25, 50, 25});
     // Generate a meter with random devices
@@ -119,11 +104,7 @@ int main(int argc, char** argv) {
     // Start the meter's background thread
     sim_meter->run_simulation();
     // Build the client
-    adq::QueryClient<SimSmartMeter::DataRecordType> client(
-        meter_id, num_meters,
-        meter_ips_by_id.at(meter_id).port(), meter_ips_by_id,
-        private_key_path.str(), meter_public_key_files,
-        std::move(sim_meter));
+    adq::QueryClient<SimSmartMeter::DataRecordType> client(num_meters, std::move(sim_meter));
     // Start waiting for incoming messages to respond to. This will not return.
     client.main_loop();
 

@@ -148,16 +148,10 @@ public:
      * @param network_manager A reference to the NetworkManager that will be used to send messages
      * @param data_source A reference to the client's DataSource, which will be used to
      * compute aggregates when handling AggregationMessages.
-     * @param private_key_filename The file containing the private key for this client.
-     * Used to construct the CryptoLibrary.
-     * @param public_key_files_by_id A map from client IDs to files containing the
-     * public keys of those clients. Used to construct the CryptoLibrary.
      */
     ProtocolState(int num_clients, int local_client_id,
                   NetworkManager<RecordType>& network_manager,
-                  DataSource<RecordType>& data_source,
-                  const std::string& private_key_filename,
-                  const std::map<int, std::string>& public_key_files_by_id);
+                  DataSource<RecordType>& data_source);
 
     /**
      * Starts the query protocol to respond to a specific query request with the

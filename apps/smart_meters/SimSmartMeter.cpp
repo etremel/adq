@@ -4,6 +4,7 @@
 #include <adq/util/FixedPoint.hpp>
 
 #include <cstdint>
+#include <chrono>
 #include <cstring>
 #include <list>
 #include <random>
@@ -105,7 +106,7 @@ void SimSmartMeter::simulate_usage_timestep() {
 adq::FixedPoint_t SimSmartMeter::simulate_nonshiftables(int time) {
     adq::FixedPoint_t total_consumption;
     for(auto& device_pair : nonshiftable_devices) {
-        double step_factor = USAGE_TIMESTEP_MIN / 60.0;
+        double step_factor = adq::Configuration::getInt32(SECTION_SIMULATION, USAGE_TIMESTEP_MIN) / 60.0;
         double hourly_factor;
         double frequency_factor;
         if(day(time) % 7 == 5 || day(time % 7 == 6)) {
@@ -131,6 +132,7 @@ adq::FixedPoint_t SimSmartMeter::simulate_nonshiftables(int time) {
 
 adq::FixedPoint_t SimSmartMeter::simulate_shiftables(int time) {
     adq::FixedPoint_t total_consumption;
+    const int timestep_min = adq::Configuration::getInt32(SECTION_SIMULATION, USAGE_TIMESTEP_MIN);
     for(auto& device_pair : shiftable_devices) {
         if(device_pair.second.scheduled_start_time > -1) {
             if(!device_pair.second.is_on && time >= device_pair.second.scheduled_start_time) {
@@ -138,7 +140,7 @@ adq::FixedPoint_t SimSmartMeter::simulate_shiftables(int time) {
                 device_pair.second.start_time = time;
             }
         } else {
-            double step_factor = USAGE_TIMESTEP_MIN / 60.0;
+            double step_factor = timestep_min / 60.0;
             double hourly_factor;
             double frequency_factor;
             if(day(time) % 7 == 5 || day(time % 7 == 6)) {
@@ -162,14 +164,14 @@ adq::FixedPoint_t SimSmartMeter::simulate_shiftables(int time) {
             device_pair.second.scheduled_start_time = -1;
         }
         // Regardless of whether device turned on, add its standby usage
-        total_consumption += device_pair.first.standby_load * adq::FixedPoint_t(USAGE_TIMESTEP_MIN / 60.0);
+        total_consumption += device_pair.first.standby_load * adq::FixedPoint_t(timestep_min / 60.0);
     }
     return total_consumption;
 }
 
 adq::FixedPoint_t SimSmartMeter::run_device(Device& device, DeviceState& device_state) {
     adq::FixedPoint_t power_consumed;  // in watt-hours
-    int time_remaining_in_timestep = USAGE_TIMESTEP_MIN;
+    int time_remaining_in_timestep = adq::Configuration::getInt32(SECTION_SIMULATION, USAGE_TIMESTEP_MIN);
     // Simulate as many device cycles as will fit in one timestep
     while(time_remaining_in_timestep > 0 && device_state.current_cycle_num < (int)device.load_per_cycle.size()) {
         // The device may already be partway through the current cycle
@@ -194,8 +196,9 @@ adq::FixedPoint_t SimSmartMeter::run_device(Device& device, DeviceState& device_
 }
 
 std::vector<adq::FixedPoint_t> SimSmartMeter::simulate_projected_usage(const int time_window) {
-    int window_whole_timesteps = time_window / USAGE_TIMESTEP_MIN;
-    adq::FixedPoint_t window_last_fraction_timestep(time_window / (double) USAGE_TIMESTEP_MIN - window_whole_timesteps);
+    const int timestep_min = adq::Configuration::getInt32(SECTION_SIMULATION, USAGE_TIMESTEP_MIN);
+    int window_whole_timesteps = time_window / timestep_min;
+    adq::FixedPoint_t window_last_fraction_timestep(time_window / (double) timestep_min - window_whole_timesteps);
     std::vector<adq::FixedPoint_t> projected_usage(window_whole_timesteps + 1);
     //save states of devices, which will be modified by the "fake" simulation
     std::vector<std::pair<Device, DeviceState>> shiftable_backup(shiftable_devices);
@@ -213,8 +216,9 @@ std::vector<adq::FixedPoint_t> SimSmartMeter::simulate_projected_usage(const int
 }
 
 adq::FixedPoint_t SimSmartMeter::measure(const std::vector<adq::FixedPoint_t>& data, const int window_minutes) const {
+    const int timestep_min = adq::Configuration::getInt32(SECTION_SIMULATION, USAGE_TIMESTEP_MIN);
     adq::FixedPoint_t window_consumption;
-    int windowWholeTimesteps = window_minutes / USAGE_TIMESTEP_MIN;
+    int windowWholeTimesteps = window_minutes / timestep_min;
     if(windowWholeTimesteps > current_timestep) {
         //Caller requested more timesteps than have been simulated, so just return what we have
         for(int i = 0; i <= current_timestep; ++i) {
@@ -222,7 +226,7 @@ adq::FixedPoint_t SimSmartMeter::measure(const std::vector<adq::FixedPoint_t>& d
         }
     }
     else {
-        double windowLastFractionTimestep = window_minutes / (double) USAGE_TIMESTEP_MIN - windowWholeTimesteps;
+        double windowLastFractionTimestep = window_minutes / (double) timestep_min - windowWholeTimesteps;
         for(int offset = 0; offset < windowWholeTimesteps; offset++) {
             window_consumption += data[current_timestep-offset];
         }
@@ -240,7 +244,7 @@ adq::FixedPoint_t SimSmartMeter::measure_shiftable_consumption(const int window_
 }
 
 adq::FixedPoint_t SimSmartMeter::measure_daily_consumption() const {
-    int day_start = day(current_timestep) * (1440 / USAGE_TIMESTEP_MIN);
+    int day_start = day(current_timestep) * (1440 / adq::Configuration::getInt32(SECTION_SIMULATION, USAGE_TIMESTEP_MIN));
     adq::FixedPoint_t daily_consumption;
     for(int time = day_start; time < current_timestep; ++time) {
         daily_consumption += consumption[time];
@@ -250,10 +254,14 @@ adq::FixedPoint_t SimSmartMeter::measure_daily_consumption() const {
 
 void SimSmartMeter::run_simulation() {
     simulation_thread = std::thread([this]() {
-        for(int timestep = 0; timestep < TOTAL_TIMESTEPS; ++timestep) {
+        const int total_timesteps = adq::Configuration::getInt32(SECTION_SIMULATION, TOTAL_TIMESTEPS);
+        const int timestep_min = adq::Configuration::getInt32(SECTION_SIMULATION, USAGE_TIMESTEP_MIN);
+        const auto time_per_timestep = std::chrono::milliseconds(
+            adq::Configuration::getInt32(SECTION_SIMULATION, MS_PER_TIMESTEP));
+        for(int timestep = 0; timestep < total_timesteps; ++timestep) {
             simulate_usage_timestep();
-            std::cout << "Advanced simulated meter by " << USAGE_TIMESTEP_MIN << " minutes" << std::endl;
-            std::this_thread::sleep_for(TIME_PER_TIMESTEP);
+            std::cout << "Advanced simulated meter by " << timestep_min << " minutes" << std::endl;
+            std::this_thread::sleep_for(time_per_timestep);
         }
     });
 }

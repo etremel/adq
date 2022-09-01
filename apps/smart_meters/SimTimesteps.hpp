@@ -1,12 +1,14 @@
 #pragma once
 
-#include "SimParameters.hpp"
+#include <adq/config/Configuration.hpp>
+
+#include "SimProperties.hpp"
 
 namespace smart_meters {
 
 /** Converts a timestep value into a number of minutes since time 0 */
 inline int minute(const int timestep) {
-    return timestep * USAGE_TIMESTEP_MIN;
+    return timestep * adq::Configuration::getInt32(SECTION_SIMULATION, USAGE_TIMESTEP_MIN);
 }
 
 /** Converts a timestep value into a number of hours since time 0 */

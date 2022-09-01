@@ -45,25 +45,11 @@ public:
      * future, these options should be loaded from a configuration file instead of passed
      * as parameters).
      *
-     * @param id The client's ID
      * @param num_clients The total number of clients in the network
-     * @param service_port The port on which the client should listen for incoming
-     * connections from other clients. Used to construct the NetworkManager.
-     * @param client_id_to_ip_map A map from client IDs to IP addresses of other
-     * clients in the network. Used to construct the NetworkManager.
-     * @param private_key_filename The file containing the private key for this client.
-     * Used to construct the CryptoLibrary.
-     * @param public_key_files_by_id A map from client IDs to files containing the
-     * public keys of those clients. Used to construct the CryptoLibrary.
      * @param data_source The DataSource object that this client should read data
      * from in response to a query. The QueryClient takes ownership of this object.
      */
-    QueryClient(int id,
-                int num_clients,
-                uint16_t service_port,
-                const std::map<int, asio::ip::tcp::endpoint>& client_id_to_ip_map,
-                const std::string& private_key_filename,
-                const std::map<int, std::string>& public_key_files_by_id,
+    QueryClient(int num_clients,
                 std::unique_ptr<DataSource<RecordType>> data_source);
 
     virtual ~QueryClient() = default;

@@ -26,8 +26,7 @@ namespace adq {
 
 template <typename RecordType>
 ProtocolState<RecordType>::ProtocolState(int num_clients, int local_client_id, NetworkManager<RecordType>& network_manager,
-                                         DataSource<RecordType>& data_source, const std::string& private_key_filename,
-                                         const std::map<int, std::string>& public_key_files_by_id)
+                                         DataSource<RecordType>& data_source)
     : logger(spdlog::get("global_logger")),
       protocol_phase(ProtocolPhase::IDLE),
       meter_id(local_client_id),
@@ -41,7 +40,9 @@ ProtocolState<RecordType>::ProtocolState(int num_clients, int local_client_id, N
       timers(std::make_unique<util::LinuxTimerManager>()),
       network(network_manager),
       data_source(data_source),
-      crypto(private_key_filename, public_key_files_by_id),
+      crypto(Configuration::getString(Configuration::SECTION_SETUP, Configuration::PRIVATE_KEY_FILE),
+             make_client_key_paths(Configuration::getString(Configuration::SECTION_SETUP, Configuration::CLIENT_KEYS_FOLDER),
+                                   num_clients)),
       agreement_start_round(0) {}
 
 template <typename RecordType>

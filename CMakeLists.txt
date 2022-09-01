@@ -36,6 +36,7 @@ if(CONCURRENTQUEUE_PATH STREQUAL "CONCURRENTQUEUE_PATH-NOTFOUND")
 endif()
 include_directories(${CONCURRENTQUEUE_PATH})
 
+add_subdirectory(src/config)
 add_subdirectory(src/core)
 add_subdirectory(src/mutils-serialization)
 add_subdirectory(src/messaging)
@@ -44,6 +45,7 @@ add_subdirectory(src/util)
 add_subdirectory(apps)
 
 add_library(adq SHARED
+    $<TARGET_OBJECTS:config>
     $<TARGET_OBJECTS:core>
     # $<TARGET_OBJECTS:messaging>
     $<TARGET_OBJECTS:mutils-serialization>
