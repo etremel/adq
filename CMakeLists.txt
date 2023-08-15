@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 if(NOT CMAKE_BUILD_TYPE)
@@ -15,11 +15,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall -ggdb")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 
-find_package(mutils)
-if (NOT ${mutils_FOUND})
-    message(FATAL_ERROR "mutils not found. Please install from https://github.com/mpmilano/mutils.git")
-endif()
-find_package(spdlog 1.3.1 REQUIRED)
+find_package(mutils REQUIRED)
+find_package(spdlog 1.3.1...1.9.2 REQUIRED)
 find_package(OpenSSL 1.1.1 REQUIRED)
 # ASIO doesn't seem to export a CMake target, so we need to manually search for it
 find_path(ASIO_PATH asio.hpp)
@@ -56,7 +53,7 @@ target_link_libraries(adq
     pthread
     rt
     spdlog::spdlog
-    ${mutils_LIBRARIES}
+    mutils::mutils
     OpenSSL::Crypto)
 
 # When building (locally), the adq target has a public dependency on the local include directory
@@ -86,7 +83,7 @@ install(DIRECTORY
 # Use CMakePackageConfigHelpers to create a package version file and config file
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/adq/adqConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/adqConfigVersion.cmake"
     VERSION ${adq_VERSION}
     COMPATIBILITY AnyNewerVersion
 )
@@ -94,7 +91,7 @@ write_basic_package_version_file(
 set(ConfigPackageLocation ${CMAKE_INSTALL_LIBDIR}/cmake/adq)
 
 configure_package_config_file(${CMAKE_SOURCE_DIR}/cmake/adqConfig.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/adq/adqConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/adqConfig.cmake"
     INSTALL_DESTINATION ${ConfigPackageLocation}
-    PATH_VARS CMAKE_INSTALL_LIBDIR CMAKE_INSTALL_INCLUDEDIR ConfigPackageLocation
+    PATH_VARS CMAKE_INSTALL_LIBDIR CMAKE_INSTALL_INCLUDEDIR
 )

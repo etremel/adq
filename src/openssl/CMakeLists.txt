@@ -7,3 +7,4 @@ target_include_directories(openssl_wrapper PRIVATE
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${OPENSSL_INCLUDE_DIR}>
 )
+target_link_libraries(openssl_wrapper OpenSSL::Crypto spdlog::spdlog)
